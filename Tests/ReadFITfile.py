@@ -17,3 +17,10 @@ metrics = actImp.exportUsefulMetrics()
 
 # Plot the pace graph to check
 actImp.data['pace'].plot(ylim=(datetime.datetime(1970, 1, 1, 00, 7), min(actImp.data['pace']) - datetime.timedelta(seconds=30)))
+
+#%% Check the altitude
+yAlt = actImp.data['altitude'].values
+yAltDiff = np.diff(yAlt)
+yAscent = np.sum(yAltDiff[yAltDiff >= 0.0])
+yDescent = np.sum(yAltDiff[yAltDiff < 0.0])
+# Altitude is wrong, there is some level of correction happening when the run is processed by Garmin
