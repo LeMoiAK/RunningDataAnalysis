@@ -189,7 +189,16 @@ class ActivityImporter:
         metricsExport['HR_ZoneNames'] = "Warm Up,Easy,Aerobic,Threshold,Maximum"
         for iZone in np.arange(len(timeHRzones)):
             metricsExport['HR_Time_Zone_' + str(iZone)] = timeHRzones[iZone]
-            metricsExport['HR_Ratio_Zone_' + str(iZone)] = timeHRzones[iZone] / totalTimeForHRzones * 100       
+            metricsExport['HR_Ratio_Zone_' + str(iZone)] = timeHRzones[iZone] / totalTimeForHRzones * 100
+        # Laps metrics
+        metricsExport['Laps_Distance'] = ','.join(str(x) for x in self.lapsMetricsDF['total_distance'])
+        metricsExport['Laps_Time'] = ','.join(str(x) for x in self.lapsMetricsDF['total_timer_time'])
+        metricsExport['Laps_AvgPace'] = ','.join(x.strftime("%M:%S") for x in self.lapsMetricsDF['avg_pace'])
+        metricsExport['Laps_MaxPace'] = ','.join(x.strftime("%M:%S") for x in self.lapsMetricsDF['max_pace'])
+        metricsExport['Laps_AvgHR'] = ','.join(str(x) for x in self.lapsMetricsDF['avg_heart_rate'])
+        metricsExport['Laps_MaxHR'] = ','.join(str(x) for x in self.lapsMetricsDF['max_heart_rate'])
+        metricsExport['Laps_AvgCadence_spm'] = ','.join(str(x) for x in self.lapsMetricsDF['avg_cadence_spm'])
+        metricsExport['Laps_MaxCadence_spm'] = ','.join(str(x) for x in self.lapsMetricsDF['max_cadence_spm'])
         
         # Finally return the metrics
         return metricsExport
