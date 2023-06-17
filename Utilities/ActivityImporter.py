@@ -21,7 +21,8 @@ import datetime
 
 #%% Define the ActivityImporter class
 class ActivityImporter:
-    """This class imports a single .fit activity given a file path.
+    """
+    This class imports a single .fit activity given a file path.
     It also contains functions to create advanced metrics.
     """
     

@@ -1,11 +1,9 @@
 # Script to test the import of a .fit file using the Garmin sdk
-from garmin_fit_sdk import Decoder, Stream, Profile
 import Utilities.Functions as Utils
 from Utilities.ActivityImporter import ActivityImporter
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import datetime
 
 ###############################################################################
 #%% Test class

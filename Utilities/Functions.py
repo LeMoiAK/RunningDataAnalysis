@@ -4,7 +4,7 @@ Useful and repeated utility functions to be used by any script.
 
 Created on Sat Jun 17 16:11:42 2023
 
-@author: koppa
+@author: LeMoiAK
 """
 
 #%% Required modules
