@@ -9,6 +9,7 @@ Created on Sat Jun 17 16:11:42 2023
 
 #%% Required modules
 import pandas as pd
+import datetime
 
 
 #%% File Functions
@@ -50,6 +51,16 @@ def removeNumberKeysFromDict(thisDict):
     for name in toRemove:
         thisDict.pop(name, None)
     return thisDict
+
+def getAge(birthDate):
+    """
+    Gets the age of a user based on their birth date. The calculation is slightly
+    complex due to leap years. We cannot just take *.year from the time delta.
+    Instead we get the year delta then substract 1 or not based on whether
+    birthday has passed or not.
+    """
+    today = datetime.datetime.today()
+    return today.year - birthDate.year - ((today.month, today.day) < (birthDate.month, birthDate.day))
 
 #%% Conversion functions
 def SemiToDeg(posLat, posLong):

@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import glob
 from Utilities.GarminDataImporter import GarminDataImporter
+import json
+import datetime
 
 folderPath = Utils.getDataPath() + "\\2023_04_03_Complete"
 print(folderPath)
@@ -51,3 +53,6 @@ plt.xlabel('Date')
 plt.ylabel('Max MET (mL Oxygen/kg/min)')
 plt.grid(True)
 plt.title('Max MET Evolution')
+
+
+#%% Load Best times and records
