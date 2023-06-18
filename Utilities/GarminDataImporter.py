@@ -37,6 +37,9 @@ class GarminDataImporter:
         # Load Performance Metrics
         self.importPerformanceMetrics()
         
+        # Load the personal records
+        self.importPersonalRecords()
+        
     
     
     #%% Data Import method
@@ -86,8 +89,8 @@ class GarminDataImporter:
 
         self.df_RacePred['raceTime5K_Pace'] = Utils.speedToPace(5.0e3 / self.df_RacePred['raceTime5K'])
         self.df_RacePred['raceTime10K_Pace'] = Utils.speedToPace(10.0e3 / self.df_RacePred['raceTime10K'])
-        self.df_RacePred['raceTimeHalf_Pace'] = Utils.speedToPace(21.0975e3 / self.df_RacePred['raceTimeHalf'])
-        self.df_RacePred['raceTimeMarathon_Pace'] = Utils.speedToPace(42.195e3 / self.df_RacePred['raceTimeMarathon'])
+        self.df_RacePred['raceTimeHalf_Pace'] = Utils.speedToPace(Utils.halfMarathonDistance / self.df_RacePred['raceTimeHalf'])
+        self.df_RacePred['raceTimeMarathon_Pace'] = Utils.speedToPace(Utils.fullMarathonDistance / self.df_RacePred['raceTimeMarathon'])
         
         # Load VO2 max estimation and max MET (less discrete)
         dfs = [] # an empty list to store the data frames
@@ -98,3 +101,49 @@ class GarminDataImporter:
         self.df_MetVO2 = pd.concat(dfs, ignore_index=True) # concatenate all the data frames in the list.
         self.df_MetVO2.set_index('updateTimestamp', inplace=True)
         self.df_MetVO2.sort_values('updateTimestamp', inplace=True)
+
+    def importPersonalRecords(self):
+        """
+        Imports the User's personal records, filters to running only then
+        puts them in their respective categories.
+        """
+        
+        fitnessFolder = self.rootFolder + "\\DI_CONNECT\\DI-Connect-Fitness"
+        with open(fitnessFolder + '\\' + self.userProfile['userName'] + '_personalRecord.json', 'r') as f:
+            tmp = json.load(f)
+        df_PR = pd.DataFrame(tmp[0]['personalRecords'])
+        # Filter it to Running only
+        df_PR = df_PR.loc[df_PR['personalRecordType'].apply(lambda rType: isinstance(rType , str) and ('Run' in rType or 'Marathon' in rType) )]
+        # Make dates and sets as index
+        df_PR['activityStartTime'] = pd.to_datetime(df_PR['prStartTimeGMT'])
+        df_PR.set_index('activityStartTime', inplace=True)
+        # Put PR into categories for easier access and understanding + create metrics
+        self.personalRecord = dict()
+        # Farthest Run
+        df_PR_FarthestRun = df_PR.loc[df_PR['personalRecordType'] == 'Farthest Run'].copy()
+        df_PR_FarthestRun['Distance_km'] = df_PR_FarthestRun['value'] / 1.0e3
+        self.personalRecord['FarthestRun'] = df_PR_FarthestRun
+        # 1km time
+        df_PR_1km = df_PR.loc[df_PR['personalRecordType'] == 'Best 1km Run'].copy()
+        df_PR_1km['Time'] = df_PR_1km['value']
+        df_PR_1km['Time_DT'] = pd.to_datetime(df_PR_1km['Time'], unit='s')
+        df_PR_1km['Pace'] = Utils.speedToPace(1.0e3 / df_PR_1km['value'])
+        self.personalRecord['1km'] = df_PR_1km
+        # 5km time
+        df_PR_5km = df_PR.loc[df_PR['personalRecordType'] == 'Best 5km Run'].copy()
+        df_PR_5km['Time'] = df_PR_5km['value']
+        df_PR_5km['Time_DT'] = pd.to_datetime(df_PR_5km['Time'], unit='s')
+        df_PR_5km['Pace'] = Utils.speedToPace(5.0e3 / df_PR_5km['value'])
+        self.personalRecord['5km'] = df_PR_5km
+        # 10 km time
+        df_PR_10km = df_PR.loc[df_PR['personalRecordType'] == 'Best 10km Run'].copy()
+        df_PR_10km['Time'] = df_PR_10km['value']
+        df_PR_10km['Time_DT'] = pd.to_datetime(df_PR_10km['Time'], unit='s')
+        df_PR_10km['Pace'] = Utils.speedToPace(10.0e3 / df_PR_10km['value'])
+        self.personalRecord['10km'] = df_PR_10km
+        # Half Marathon time
+        df_PR_HM = df_PR.loc[df_PR['personalRecordType'] == 'Best Half Marathon'].copy()
+        df_PR_HM['Time'] = df_PR_HM['value']
+        df_PR_HM['Time_DT'] = pd.to_datetime(df_PR_HM['Time'], unit='s')
+        df_PR_HM['Pace'] = Utils.speedToPace(Utils.halfMarathonDistance / df_PR_HM['value'])
+        self.personalRecord['HM'] = df_PR_HM

@@ -12,6 +12,10 @@ import pandas as pd
 import datetime
 
 
+#%% Useful constants
+halfMarathonDistance = 21.0975e3  # in meters
+fullMarathonDistance = 42.195e3   # in meters
+
 #%% File Functions
 def getDataPath():
     """
