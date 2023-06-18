@@ -4,6 +4,7 @@ from Utilities.ActivityImporter import ActivityImporter
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import datetime
 
 ###############################################################################
 #%% Test class
