@@ -87,8 +87,7 @@ plt.title('Race Pace Prediction vs Personal Records')
 #%% Look at metrics of activities
 metricsDF = gdi.activityMetricsDF
 
-plt.figure()
-plt.scatter(metricsDF['Metric_StartTime'], metricsDF['Metric_AvgPace'])
+sns.scatterplot(x='Metric_StartTime',y='Metric_AvgPace',data=metricsDF,hue='Sport_Name')
 plt.xlabel('Date')
 plt.ylabel('Avg Pace (min/km)')
 plt.grid(True)
