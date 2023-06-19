@@ -9,16 +9,20 @@ Created on Sun Jun 18 18:05:44 2023
 import Utilities.Functions as Utils
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 import glob
 from Utilities.GarminDataImporter import GarminDataImporter
+from Utilities.ActivityImporter import ActivityImporter
 import json
 import datetime
+from zipfile import ZipFile
+import os
 
 folderPath = Utils.getDataPath() + "\\2023_04_03_Complete"
 print(folderPath)
 
 #%% Try GarminDataImporter
-gdi = GarminDataImporter(folderPath)
+gdi = GarminDataImporter(folderPath, importActivities=True)
 
 #%% Plot Race Predictions
 gdi.df_RacePred['raceTime5K_Pace'].plot()
@@ -79,3 +83,13 @@ plt.ylabel('Pace Prediction')
 plt.legend(['5k Prediction', '5k Real', '10k Prediction', '10k Real', 'Half Prediction', 'Half Real'])
 plt.grid(True)
 plt.title('Race Pace Prediction vs Personal Records')
+
+#%% Look at metrics of activities
+metricsDF = gdi.activityMetricsDF
+
+plt.figure()
+plt.scatter(metricsDF['Metric_StartTime'], metricsDF['Metric_AvgPace'])
+plt.xlabel('Date')
+plt.ylabel('Avg Pace (min/km)')
+plt.grid(True)
+plt.title('Avg Pace Evolution over Time')

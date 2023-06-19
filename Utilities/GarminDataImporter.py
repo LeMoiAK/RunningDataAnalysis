@@ -16,6 +16,8 @@ import pandas as pd
 import glob
 import json
 import datetime
+from zipfile import ZipFile
+import os
 
 #%% GarminDataImporter class
 class GarminDataImporter:
@@ -23,10 +25,22 @@ class GarminDataImporter:
     This class imports data from all files contained within the folder of data provided by Garmin.
     """
     
-    def __init__(self, folderPath):
+    def __init__(self, folderPath, importActivities=True):
         """
-        Contructor. Give path to the root of the Garmin data folder as input
-        """
+        Constructor of the GarminDataImporter class
+
+        Parameters
+        ----------
+        folderPath : String
+            Path to the root folder of the Garmin Data.
+        importActivities : String, optional
+            Bool on whether to import the activity files. WARNING IS SLOW. The default is True.
+
+        Returns
+        -------
+        None.
+
+        """        
         
         # Save folder for us in other methods
         self.rootFolder = folderPath
@@ -39,6 +53,10 @@ class GarminDataImporter:
         
         # Load the personal records
         self.importPersonalRecords()
+        
+        # Imports the activities if requested
+        if importActivities:
+            self.importActivityFiles()
         
     
     
@@ -147,3 +165,55 @@ class GarminDataImporter:
         df_PR_HM['Time_DT'] = pd.to_datetime(df_PR_HM['Time'], unit='s')
         df_PR_HM['Pace'] = Utils.speedToPace(Utils.halfMarathonDistance / df_PR_HM['value'])
         self.personalRecord['HM'] = df_PR_HM
+        
+    def importActivityFiles(self):
+        """
+        Imports the activity files and aggregates the metrics into a single table.
+        There are several steps. First the zip files are extracted into the same folder.
+        Then all files are read and filtered to only the running activities.
+        Other fit files are deleted. Finally, a dataFrame with all metrics is generated.
+        """
+        
+        # get list of zip files containing the fit files
+        activityFolder = self.rootFolder + "\\DI_CONNECT\\DI-Connect-Fitness-Uploaded-Files"
+        listActZipFiles = glob.glob(activityFolder + "\\*.zip")
+
+        # Extracts all the known zip files
+        for thisZipFile in listActZipFiles:
+            with ZipFile(thisZipFile, 'r') as zip:
+                zip.extractall(path=activityFolder)
+
+        # Get a list of all the fit files
+        listActFitFiles = glob.glob(activityFolder + "\\*.fit")
+
+        # Import the fit files with the ActivityImporter
+        activityImporters = []
+        activityFiles = []
+        NONactivityFilesToRemove = []
+        NFitFiles = len(listActFitFiles)
+        Utils.printProgressBar(0, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        for i, ActFitFile in enumerate(listActFitFiles):
+            thisImporter = ActivityImporter(ActFitFile)
+            # Check the validity of the imported fit file
+            if thisImporter.ObjInfo['DecodeSuccess'] and thisImporter.ObjInfo['isSportActivity'] and 'running' in thisImporter.ObjInfo['sport']:
+                # This is valid
+                activityImporters.append(thisImporter)
+                activityFiles.append(ActFitFile)
+            else:
+                NONactivityFilesToRemove.append(ActFitFile)
+            Utils.printProgressBar(i + 1, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
+        # Delete all extracted files that are not valid activities
+        for fileToRM in NONactivityFilesToRemove:
+            if os.path.isfile(fileToRM):
+                os.remove(fileToRM)
+
+        # Finally, go through the Imported Activities, get their metrics and create a table
+        metricsList = []
+        for activity in activityImporters:
+            metricsList.append(activity.exportUsefulMetrics())
+        self.activityMetricsDF = pd.DataFrame(metricsList)
+        
+        # Save the list of importers and their respective files
+        self.activityImporters = activityImporters
+        self.activityFiles = activityFiles
