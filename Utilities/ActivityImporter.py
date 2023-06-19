@@ -27,7 +27,9 @@ class ActivityImporter:
     """
     
     def __init__(self, filePath):
-        """Contructor. Give path to the .fit file as input"""
+        """
+        Contructor. Give path to the .fit file as input
+        """
         
         # Declare Main variables so we know they exist
         self.ObjInfo = dict()
@@ -44,20 +46,32 @@ class ActivityImporter:
             print(f"Could not decode {filePath}: {errors}")
         else:
             self.ObjInfo['DecodeSuccess'] = True
-            
-        # Extracts User infos, file infos, and Metrics
-        self.extractMetricsAndInfo(messages)
-            
-        # Puts the records into the DataFrame format
-        self.transformRecordsToDataFrame(messages['record_mesgs'])
         
-        # Adds file path to the file info
-        self.fileInfo['filePath'] = filePath
-    
+        # Check if we indeed have an activity then get metrics if yes
+        if 'activity_mesgs' in messages.keys() and 'record_mesgs' in messages.keys() \
+            and 'event_mesgs' in messages.keys() and 'sport_mesgs' in messages.keys():
+            self.ObjInfo['isSportActivity'] = True
+            self.ObjInfo['sport'] = messages['sport_mesgs'][0]['sport']
+            
+            # Filter per sport - not designed to work with multisport
+            if 'running' in self.ObjInfo['sport']:
+                # Extracts User infos, file infos, and Metrics
+                self.extractMetricsAndInfo(messages)
+                    
+                # Puts the records into the DataFrame format
+                self.transformRecordsToDataFrame(messages['record_mesgs'])
+                
+                # Adds file path to the file info
+                self.fileInfo['filePath'] = filePath            
+        else:
+            self.ObjInfo['isSportActivity'] = False
+                
     #%% Data formatting functions
     def transformRecordsToDataFrame(self, recordMessages):
-        """Transforms the records messages into a pandas dataFrame and performs
-        all operations on the data such as unit conversion"""
+        """
+        Transforms the records messages into a pandas dataFrame and performs
+        all operations on the data such as unit conversion
+        """
         
         # Get into dataFrame
         df = pd.DataFrame(recordMessages)
@@ -110,24 +124,28 @@ class ActivityImporter:
         self.eventListDF = Utils.removeNumberColumsFromDataFrame(pd.DataFrame(messages['event_mesgs']))  # At least start and stop events so always a list
         # Laps and metrics per lap
         self.lapsMetricsDF = Utils.removeNumberColumsFromDataFrame(pd.DataFrame(messages['lap_mesgs']))
-        (self.lapsMetricsDF['start_position_lat_deg'], self.lapsMetricsDF['start_position_long_deg']) = \
-            Utils.SemiToDeg(self.lapsMetricsDF['start_position_lat'], self.lapsMetricsDF['start_position_long'])
-        (self.lapsMetricsDF['end_position_lat_deg'], self.lapsMetricsDF['end_position_long_deg']) = \
-            Utils.SemiToDeg(self.lapsMetricsDF['end_position_lat'], self.lapsMetricsDF['end_position_long'])
+        if ('start_position_lat' in self.lapsMetricsDF.columns) and ('start_position_long' in self.lapsMetricsDF.columns):
+            (self.lapsMetricsDF['start_position_lat_deg'], self.lapsMetricsDF['start_position_long_deg']) = \
+                Utils.SemiToDeg(self.lapsMetricsDF['start_position_lat'], self.lapsMetricsDF['start_position_long'])
+        if ('end_position_lat' in self.lapsMetricsDF.columns) and ('end_position_long' in self.lapsMetricsDF.columns):
+            (self.lapsMetricsDF['end_position_lat_deg'], self.lapsMetricsDF['end_position_long_deg']) = \
+                Utils.SemiToDeg(self.lapsMetricsDF['end_position_lat'], self.lapsMetricsDF['end_position_long'])
         self.lapsMetricsDF['avg_pace'] = Utils.speedToPace(self.lapsMetricsDF['avg_speed'])
         self.lapsMetricsDF['max_pace'] = Utils.speedToPace(self.lapsMetricsDF['max_speed'])
         self.lapsMetricsDF['avg_cadence_spm'] = Utils.convertRPMtoCadence(self.lapsMetricsDF['avg_cadence'], self.lapsMetricsDF['avg_fractional_cadence'])
         self.lapsMetricsDF['max_cadence_spm'] = Utils.convertRPMtoCadence(self.lapsMetricsDF['max_cadence'], self.lapsMetricsDF['max_fractional_cadence'])
         # Total Session Metrics
         self.sessionMetrics = Utils.removeNumberKeysFromDict(messages['session_mesgs'][0])
-        (self.sessionMetrics['start_position_lat_deg'], self.sessionMetrics['start_position_long_deg']) = \
-            Utils.SemiToDeg(self.sessionMetrics['start_position_lat'], self.sessionMetrics['start_position_long'])
+        if ('start_position_lat' in self.sessionMetrics.keys()) and ('start_position_long' in self.sessionMetrics.keys()):
+            (self.sessionMetrics['start_position_lat_deg'], self.sessionMetrics['start_position_long_deg']) = \
+                Utils.SemiToDeg(self.sessionMetrics['start_position_lat'], self.sessionMetrics['start_position_long'])
         self.sessionMetrics['avg_pace'] = Utils.speedToPace(self.sessionMetrics['avg_speed'])
         self.sessionMetrics['max_pace'] = Utils.speedToPace(self.sessionMetrics['max_speed'])
         self.sessionMetrics['avg_cadence_spm'] = Utils.convertRPMtoCadence(self.sessionMetrics['avg_cadence'], self.sessionMetrics['avg_fractional_cadence'])
         self.sessionMetrics['max_cadence_spm'] = Utils.convertRPMtoCadence(self.sessionMetrics['max_cadence'], self.sessionMetrics['max_fractional_cadence'])
         # Splits Information, run/walk/stand
-        self.splitsInfo = Utils.removeNumberColumsFromDataFrame(pd.DataFrame(messages['split_mesgs']))
+        if 'split_mesgs' in messages.keys(): # This feature seems to have been added only after some time
+            self.splitsInfo = Utils.removeNumberColumsFromDataFrame(pd.DataFrame(messages['split_mesgs']))
         # Information on Sport
         self.sportInfo = Utils.removeNumberKeysFromDict(messages['sport_mesgs'][0])
         # Heart-Rate zone per lap and for the whole session in last item (Nlaps+1)
@@ -150,7 +168,10 @@ class ActivityImporter:
         metricsExport['User_Gender'] = self.userProfile['gender']
         metricsExport['User_Height'] = self.userProfile['height']
         metricsExport['User_RestingHeartRate'] = self.userProfile['resting_heart_rate']
-        metricsExport['User_MaxHeartRate'] = self.lapHRzonesDF['max_heart_rate'].iloc[-1]
+        if 'max_heart_rate' in self.lapHRzonesDF.columns: # Not available for all activities
+            metricsExport['User_MaxHeartRate'] = self.lapHRzonesDF['max_heart_rate'].iloc[-1]
+        else:
+            metricsExport['User_MaxHeartRate'] = np.nan
         metricsExport['User_Weight'] = self.userProfile['weight']
         metricsExport['User_SleepTime'] = self.userProfile['sleep_time_TD']
         metricsExport['User_WakeTime'] = self.userProfile['wake_time_TD']
@@ -173,19 +194,22 @@ class ActivityImporter:
         metricsExport['Metric_MaxSpeed_ms'] = self.sessionMetrics['max_speed']
         metricsExport['Metric_AvgPace'] = self.sessionMetrics['avg_pace']
         metricsExport['Metric_MaxPace'] = self.sessionMetrics['max_pace']
-        metricsExport['Metric_TotalAscent'] = self.sessionMetrics['total_ascent']
-        metricsExport['Metric_TotalDescent'] = self.sessionMetrics['total_descent']
+        metricsExport['Metric_TotalAscent'] = Utils.valuesOrDict(self.sessionMetrics, 'total_ascent', np.nan) # Not available for all activities, ex Treadmill
+        metricsExport['Metric_TotalDescent'] = Utils.valuesOrDict(self.sessionMetrics, 'total_descent', np.nan)
         metricsExport['Metric_AvgCadence_spm'] = self.sessionMetrics['avg_cadence_spm']
         metricsExport['Metric_MaxCadence_spm'] = self.sessionMetrics['max_cadence_spm']
         metricsExport['Metric_NbLaps'] = self.sessionMetrics['num_laps']
         metricsExport['Metric_AvgHeartRate'] = self.sessionMetrics['avg_heart_rate']
         metricsExport['Metric_MaxHeartRate'] = self.sessionMetrics['max_heart_rate']
-        metricsExport['Metric_StartPosition_Lat'] = self.sessionMetrics['start_position_lat_deg']
-        metricsExport['Metric_StartPosition_Long'] = self.sessionMetrics['start_position_long_deg']
+        metricsExport['Metric_StartPosition_Lat'] = Utils.valuesOrDict(self.sessionMetrics, 'start_position_lat_deg', np.nan) # Not available for all activities, ex Treadmill
+        metricsExport['Metric_StartPosition_Long'] = Utils.valuesOrDict(self.sessionMetrics, 'start_position_long_deg', np.nan)
         # Heart Rate - Metrics only for whole session
         timeHRzones = self.lapHRzonesDF['time_in_hr_zone'].iloc[-1]
         totalTimeForHRzones = np.sum(timeHRzones) # Might be slightly different than session time
-        HRzonesBounds = self.lapHRzonesDF['hr_zone_high_boundary'].iloc[-1]
+        if 'hr_zone_high_boundary' in self.lapHRzonesDF.columns: # Not available for all activities, ex First One
+            HRzonesBounds = self.lapHRzonesDF['hr_zone_high_boundary'].iloc[-1]
+        else:
+            HRzonesBounds = [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]        
         metricsExport['HR_ZoneBoundaries'] = ','.join(str(bnd) for bnd in HRzonesBounds)
         metricsExport['HR_ZoneNames'] = "Warm Up,Easy,Aerobic,Threshold,Maximum"
         for iZone in np.arange(len(timeHRzones)):

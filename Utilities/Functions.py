@@ -66,6 +66,15 @@ def getAge(birthDate):
     today = datetime.datetime.today()
     return today.year - birthDate.year - ((today.month, today.day) < (birthDate.month, birthDate.day))
 
+def valuesOrDict(dataIN, key, defaultValue):
+    """
+    Tests if a value is available in a dictionnary and returns the default value if not
+    """
+    if key in dataIN.keys():
+        return dataIN[key]
+    else:
+        return defaultValue
+
 #%% Conversion functions
 def SemiToDeg(posLat, posLong):
     """
