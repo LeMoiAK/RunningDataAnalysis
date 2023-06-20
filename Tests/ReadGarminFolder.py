@@ -92,3 +92,22 @@ plt.xlabel('Date')
 plt.ylabel('Avg Pace (min/km)')
 plt.grid(True)
 plt.title('Avg Pace Evolution over Time')
+
+#%% Look at best efforts evolution
+sns.scatterplot(x='Metric_StartTime', y='BestEffort_distance_5km_pace', data=metricsDF)
+sns.scatterplot(x='Metric_StartTime', y='BestEffort_distance_10km_pace', data=metricsDF)
+sns.scatterplot(x='Metric_StartTime', y='BestEffort_distance_HalfMarathon_pace', data=metricsDF)
+plt.xlabel('Date')
+plt.ylabel('Best Pace (min/km)')
+plt.grid(True)
+plt.title('Best Pace Evolution over Time for each distance')
+plt.legend(['5km', '10km', 'Half'])
+
+#%% Look at VO2max estimation from the Cooper test
+plt.figure()
+metricsDF['CooperTest_VO2max_Estimation'] = (22.351 * metricsDF['BestEffort_time_12mins_distance']/1e3) - 11.288
+sns.scatterplot(x='Metric_StartTime', y='CooperTest_VO2max_Estimation', data=metricsDF)
+plt.xlabel('Date')
+plt.ylabel('VO2max estimation (mL/kg/min)')
+plt.grid(True)
+plt.title('VO2max estimation Evolution over Time')
