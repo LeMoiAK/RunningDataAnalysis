@@ -26,7 +26,7 @@ class ActivityImporter:
     It also contains functions to create advanced metrics.
     """
     
-    def __init__(self, filePath):
+    def __init__(self, filePath, estimateBestEfforts=True):
         """
         Contructor. Give path to the .fit file as input
         """
@@ -62,7 +62,14 @@ class ActivityImporter:
                 self.transformRecordsToDataFrame(messages['record_mesgs'])
                 
                 # Adds file path to the file info
-                self.fileInfo['filePath'] = filePath            
+                self.fileInfo['filePath'] = filePath
+                
+                # Get best efforts if requested
+                if estimateBestEfforts:
+                    self.getBestEfforts()
+                    self.ObjInfo['hasBestEfforts'] = True
+                else:
+                    self.ObjInfo['hasBestEfforts'] = False
         else:
             self.ObjInfo['isSportActivity'] = False
                 
@@ -104,6 +111,17 @@ class ActivityImporter:
         if 'speed' in df.columns:
             df['speed_kph']  = df['speed'] * 3.6
             df['pace'] = Utils.speedToPace(df['speed'])
+        
+        # Check the distance channel vs the integration of speed
+        # Some activities have very bad distance estimations
+        # No more than 30% error
+        df['time'] = (df['timestamp'] - df['timestamp'].iloc[0]).apply(lambda x: x.total_seconds())
+        estimatedDistance = np.trapz(x=df['time'], y=df['speed'].fillna(0.0))
+        finalDistance = df['distance'].iloc[-1]
+        if abs(estimatedDistance-finalDistance)/finalDistance*100 > 30:
+            self.ObjInfo['isDistanceValid'] = False
+        else:
+            self.ObjInfo['isDistanceValid'] = True
         
         # Save df into object name
         self.data = df
@@ -179,6 +197,7 @@ class ActivityImporter:
         metricsExport['File_Device'] = self.fileInfo['manufacturer'] + ' ' + self.fileInfo['garmin_product'] + ' - ' + str(self.fileInfo['serial_number'])
         metricsExport['File_Path'] = self.fileInfo['filePath']
         metricsExport['File_CreationDate'] = self.fileInfo['time_created']
+        metricsExport['File_isDistanceValid'] = self.ObjInfo['isDistanceValid']
         # Sport Info
         metricsExport['Sport_Name'] = self.sportInfo['name']
         metricsExport['Sport_Type'] = self.sportInfo['sport']
@@ -225,8 +244,106 @@ class ActivityImporter:
         metricsExport['Laps_AvgCadence_spm'] = ','.join(str(x) for x in self.lapsMetricsDF['avg_cadence_spm'])
         metricsExport['Laps_MaxCadence_spm'] = ','.join(str(x) for x in self.lapsMetricsDF['max_cadence_spm'])
         
+        # Get Best efforts if it exists
+        if self.ObjInfo['hasBestEfforts']:
+            for thisKey in self.bestEffortsMetrics.keys():
+                metricsExport['BestEffort_' + thisKey] = self.bestEffortsMetrics[thisKey]        
+        
         # Finally return the metrics
         return metricsExport
     
     #%% Data Analysis functions
-    
+    def getBestEfforts(self):
+        """
+        Obtains the best efforts for each distance and time scale in the data.
+        For distances, we look at 400m, 500m, 800m, 1km, 1mile, 5km, 10km, 15km, 10miles, Half and Full Marathon
+        For time, we look at 12mins (Cooper test) and 60mins (Threshold)
+        For each of these, we also produce the pace.
+        
+        This function can be relatively slow to run
+        """
+        
+        # Get data
+        df = self.data
+        Nrows = len(df)
+        
+        # Initialised to np.inf because we want to minimise it
+        bestTimePerDistance = {'400m': np.inf, '500m': np.inf, '800m': np.inf, '1km': np.inf, '1mile': np.inf,
+                               '5km': np.inf, '10km': np.inf, '15km': np.inf, '10miles': np.inf, 
+                               'HalfMarathon': np.inf, 'FullMarathon': np.inf}
+        # Initialised to 0.0 because we want to maximise
+        bestDistancePerTime = {'12mins': 0.0, '60mins': 0.0}
+
+        distancesNamesList =  ['400m', '500m', '800m', '1km',            '1mile', '5km', '10km', '15km',             '10miles',             'HalfMarathon',             'FullMarathon']
+        distancesValuesList = [ 400.0,  500.0,  800.0, 1.0e3, Utils.mileDistance, 5.0e3, 10.0e3, 15.0e3, 10*Utils.mileDistance, Utils.halfMarathonDistance, Utils.fullMarathonDistance]
+        Ndistances = len(distancesNamesList)
+
+        distanceArray = df['distance'].values
+        timeArray = df['time'].values
+
+        # Go through the data point by point
+        for idxStart in np.arange(Nrows):
+            thisDistanceStart = distanceArray[idxStart]
+            thisTimeStart = timeArray[idxStart]
+            
+            # These booleans are required to check we don't assign again once a valid value has been found for each effort
+            hasFoundDistance = {'400m': False, '500m': False, '800m': False, '1km': False, '1mile': False,
+                                   '5km': False, '10km': False, '15km': False, '10miles': False, 
+                                   'HalfMarathon': False, 'FullMarathon': False}
+            hasFoundTime = {'12mins': False, '60mins': False}
+            # Then go through the rest of the data
+            for idxEnd in np.arange(idxStart, Nrows):
+                thisDistanceEnd = distanceArray[idxEnd]
+                thisTimeEnd = timeArray[idxEnd]
+                
+                distDelta = thisDistanceEnd - thisDistanceStart
+                timeDelta = thisTimeEnd - thisTimeStart
+                # Distances
+                for iDist in np.arange(Ndistances):
+                    thisDistName = distancesNamesList[iDist]
+                    thisDistValue = distancesValuesList[iDist]
+                    if not(hasFoundDistance[thisDistName]) and distDelta >= thisDistValue:
+                        hasFoundDistance[thisDistName] = True
+                        if bestTimePerDistance[thisDistName] >= timeDelta:
+                            bestTimePerDistance[thisDistName] = timeDelta                
+                        
+                # Times - not automated because only two
+                if not(hasFoundTime['12mins']) and timeDelta >= 12*60.0:
+                    hasFoundTime['12mins'] = True
+                    if bestDistancePerTime['12mins'] <= distDelta:
+                        bestDistancePerTime['12mins'] = distDelta
+                if not(hasFoundTime['60mins']) and timeDelta >= 60*60.0:
+                    hasFoundTime['60mins'] = True
+                    if bestDistancePerTime['60mins'] <= distDelta:
+                        bestDistancePerTime['60mins'] = distDelta
+
+        # Then convert to paces and timestamps
+        bestEffortsMetrics = dict()
+        # Distances
+        for iDist in np.arange(Ndistances):
+            thisDistName = distancesNamesList[iDist]
+            thisDistValue = distancesValuesList[iDist]
+            if not(bestTimePerDistance[thisDistName] == np.inf):
+                bestEffortsMetrics['distance_' + thisDistName + '_time'] = bestTimePerDistance[thisDistName]
+                bestEffortsMetrics['distance_' + thisDistName + '_timeStamp'] = pd.Timestamp(bestTimePerDistance[thisDistName], unit='s')
+                bestEffortsMetrics['distance_' + thisDistName + '_pace'] = Utils.speedToPace(thisDistValue / bestTimePerDistance[thisDistName])
+            else:
+                bestEffortsMetrics['distance_' + thisDistName + '_time'] = np.nan
+                bestEffortsMetrics['distance_' + thisDistName + '_timeStamp'] = np.nan
+                bestEffortsMetrics['distance_' + thisDistName + '_pace'] = np.nan
+        # Times
+        if not(bestDistancePerTime['12mins'] == 0.0):
+            bestEffortsMetrics['time_' + '12mins' + '_distance'] = bestDistancePerTime['12mins']
+            bestEffortsMetrics['time_' + '12mins' + '_pace'] = Utils.speedToPace(bestDistancePerTime['12mins'] / (12*60.0))
+        else:
+            bestEffortsMetrics['time_' + '12mins' + '_distance'] = np.nan
+            bestEffortsMetrics['time_' + '12mins' + '_pace'] = np.nan
+        if not(bestDistancePerTime['60mins'] == 0.0):
+            bestEffortsMetrics['time_' + '60mins' + '_distance'] = bestDistancePerTime['60mins']
+            bestEffortsMetrics['time_' + '60mins' + '_pace'] = Utils.speedToPace(bestDistancePerTime['60mins'] / (60*60.0))
+        else:
+            bestEffortsMetrics['time_' + '60mins' + '_distance'] = np.nan
+            bestEffortsMetrics['time_' + '60mins' + '_pace'] = np.nan
+
+        # Finally save metrics to class
+        self.bestEffortsMetrics = bestEffortsMetrics
