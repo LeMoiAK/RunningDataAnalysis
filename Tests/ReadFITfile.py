@@ -6,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 import datetime
 import matplotlib.pyplot as plt
+from meteostat import Point, Hourly
 
 ###############################################################################
 #%% Test class
@@ -24,3 +25,14 @@ yAltDiff = np.diff(yAlt)
 yAscent = np.sum(yAltDiff[yAltDiff >= 0.0])
 yDescent = np.sum(yAltDiff[yAltDiff < 0.0])
 # Altitude is wrong, there is some level of correction happening when the run is processed by Garmin
+
+#%% Test Weather data import
+# Create start end and location from metrics
+origTZinfo = metrics['Metric_StartTime'].tzname()
+start = metrics['Metric_StartTime'].replace(tzinfo=None)  # Must add function to ensure there is at least one full hour between start and end
+end = metrics['Metric_EndTime'].replace(tzinfo=None) # See if more elegant way to deal with timezones rather than removing it
+location = Point(metrics['Metric_StartPosition_Lat'], metrics['Metric_StartPosition_Long'], actImp.data['altitude'].iloc[0])
+
+# Get data
+data = Hourly(location, start, end, origTZinfo)
+data = data.fetch()
