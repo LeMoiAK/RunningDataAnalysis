@@ -87,6 +87,7 @@ plt.title('Race Pace Prediction vs Personal Records')
 #%% Look at metrics of activities
 metricsDF = gdi.activityMetricsDF
 
+plt.figure()
 sns.scatterplot(x='Metric_StartTime',y='Metric_AvgPace',data=metricsDF,hue='Sport_Name')
 plt.xlabel('Date')
 plt.ylabel('Avg Pace (min/km)')
@@ -94,13 +95,14 @@ plt.grid(True)
 plt.title('Avg Pace Evolution over Time')
 
 #%% Look at best efforts evolution
+plt.figure()
 sns.scatterplot(x='Metric_StartTime', y='BestEffort_distance_5km_pace', data=metricsDF)
 sns.scatterplot(x='Metric_StartTime', y='BestEffort_distance_10km_pace', data=metricsDF)
 sns.scatterplot(x='Metric_StartTime', y='BestEffort_distance_HalfMarathon_pace', data=metricsDF)
 plt.xlabel('Date')
 plt.ylabel('Best Pace (min/km)')
 plt.grid(True)
-plt.title('Best Pace Evolution over Time for each distance')
+plt.title('Best Effort Pace Evolution over Time for each distance')
 plt.legend(['5km', '10km', 'Half'])
 
 #%% Look at VO2max estimation from the Cooper test
