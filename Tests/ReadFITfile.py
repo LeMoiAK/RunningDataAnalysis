@@ -29,10 +29,23 @@ yDescent = np.sum(yAltDiff[yAltDiff < 0.0])
 #%% Test Weather data import
 # Create start end and location from metrics
 origTZinfo = metrics['Metric_StartTime'].tzname()
-start = metrics['Metric_StartTime'].replace(tzinfo=None)  # Must add function to ensure there is at least one full hour between start and end
-end = metrics['Metric_EndTime'].replace(tzinfo=None) # See if more elegant way to deal with timezones rather than removing it
+start = metrics['Metric_StartTime'].replace(tzinfo=None)
+end = metrics['Metric_EndTime'].replace(tzinfo=None)
+end = end.replace(second=0, microsecond=0, minute=0, hour=end.hour+1) # Ensure there's at least an hour (but loss of precision)
 location = Point(metrics['Metric_StartPosition_Lat'], metrics['Metric_StartPosition_Long'], actImp.data['altitude'].iloc[0])
 
 # Get data
-data = Hourly(location, start, end, origTZinfo)
-data = data.fetch()
+weatherData = Hourly(location, start, end, origTZinfo)
+weatherData = weatherData.fetch()
+
+weatherConditions = {1: "Clear", 2: "Fair", 3: "Cloudy", 4: "Overcast", 5: "Fog", 6: "Freezing Fog", 7: "Light Rain", 8: "Rain", 9: "Heavy Rain",
+                     10: "Freezing Rain", 11: "Heavy Freezing Rain", 12: "Sleet", 13: "Heavy Sleet", 14: "Light Snowfall", 15: "Snowfall",
+                     16: "Heavy Snowfall", 17: "Rain Shower", 18: "Heavy Rain Shower", 19: "Sleet Shower", 20: "Heavy Sleet Shower",
+                     21: "Snow Shower", 22: "Heavy Snow Shower", 23: "Lightning", 24: "Hail", 25: "Thunderstorm", 26: "Heavy Thunderstorm", 27: "Storm"}
+
+weatherMetrics = dict()
+weatherMetrics['Temperature_degC'] = weatherData['temp'].mean()
+weatherMetrics['Rain_mm'] = weatherData['prcp'].mean()
+weatherMetrics['WindSpeed_kph'] = weatherData['wspd'].mean()
+weatherMetrics['WindGustSpeed_kph'] = weatherData['wpgt'].mean()
+weatherMetrics['Condition'] = weatherData['coco'].map(weatherConditions).iloc[0]

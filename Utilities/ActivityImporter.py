@@ -17,6 +17,7 @@ import Utilities.Functions as Utils
 import numpy as np
 import pandas as pd
 import datetime
+from meteostat import Point, Hourly
 
 
 #%% Define the ActivityImporter class
@@ -26,7 +27,7 @@ class ActivityImporter:
     It also contains functions to create advanced metrics.
     """
     
-    def __init__(self, filePath, estimateBestEfforts=True):
+    def __init__(self, filePath, estimateBestEfforts=True, importWeather=True):
         """
         Contructor. Give path to the .fit file as input
         """
@@ -70,6 +71,13 @@ class ActivityImporter:
                     self.ObjInfo['hasBestEfforts'] = True
                 else:
                     self.ObjInfo['hasBestEfforts'] = False
+                    
+                if importWeather:
+                    self.importWeather()
+                    self.ObjInfo['hasWeather'] = True
+                else:
+                    self.ObjInfo['hasWeather'] = False
+                    
         else:
             self.ObjInfo['isSportActivity'] = False
                 
@@ -247,7 +255,11 @@ class ActivityImporter:
         # Get Best efforts if it exists
         if self.ObjInfo['hasBestEfforts']:
             for thisKey in self.bestEffortsMetrics.keys():
-                metricsExport['BestEffort_' + thisKey] = self.bestEffortsMetrics[thisKey]        
+                metricsExport['BestEffort_' + thisKey] = self.bestEffortsMetrics[thisKey]
+        
+        # Get Weather; always there but can be NaNs
+        for thisKey in self.weatherMetrics.keys():
+            metricsExport['Weather_' + thisKey] = self.weatherMetrics[thisKey]
         
         # Finally return the metrics
         return metricsExport
@@ -347,3 +359,48 @@ class ActivityImporter:
 
         # Finally save metrics to class
         self.bestEffortsMetrics = bestEffortsMetrics
+    
+    #%% Data augmentation functions
+    def importWeather(self):
+        """
+        This function imports the weather data corresponding to the imported run.
+        It uses the Meteostat module https://dev.meteostat.net/guide.html
+        The units and codes are explained here https://dev.meteostat.net/formats.html#time-format
+        """
+        
+        # This function works only for running session and not Treadmill
+        if 'start_position_lat_deg' in self.sessionMetrics.keys() and 'start_position_long_deg' in self.sessionMetrics.keys():
+            # Create startTime endTime and location from metrics
+            # Need to save then suppress the timezone information because of the Hourly function
+            origTZinfo = self.sessionMetrics['start_time'].tzname()
+            startTime = self.sessionMetrics['start_time'].replace(tzinfo=None)
+            endTime = self.sessionMetrics['start_time'] + datetime.timedelta(seconds=self.sessionMetrics['total_elapsed_time'])
+            endTime = endTime.replace(tzinfo=None)
+            endTime = endTime.replace(second=0, microsecond=0, minute=0, hour=endTime.hour+1) # Ensure there's at least an hour (but loss of precision)
+            
+            startPosLat = Utils.valuesOrDict(self.sessionMetrics, 'start_position_lat_deg', np.nan)
+            startPosLon = Utils.valuesOrDict(self.sessionMetrics, 'start_position_long_deg', np.nan)
+            location = Point(startPosLat, startPosLon, self.data['altitude'].iloc[0])
+    
+            # Get data
+            weatherData = Hourly(location, startTime, endTime, origTZinfo)
+            weatherData = weatherData.fetch()
+    
+            weatherConditions = {1: "Clear", 2: "Fair", 3: "Cloudy", 4: "Overcast", 5: "Fog", 6: "Freezing Fog", 7: "Light Rain", 8: "Rain", 9: "Heavy Rain",
+                                 10: "Freezing Rain", 11: "Heavy Freezing Rain", 12: "Sleet", 13: "Heavy Sleet", 14: "Light Snowfall", 15: "Snowfall",
+                                 16: "Heavy Snowfall", 17: "Rain Shower", 18: "Heavy Rain Shower", 19: "Sleet Shower", 20: "Heavy Sleet Shower",
+                                 21: "Snow Shower", 22: "Heavy Snow Shower", 23: "Lightning", 24: "Hail", 25: "Thunderstorm", 26: "Heavy Thunderstorm", 27: "Storm"}
+    
+            self.weatherMetrics = dict()
+            self.weatherMetrics['Temperature_degC'] = weatherData['temp'].mean()
+            self.weatherMetrics['Rain_mm'] = weatherData['prcp'].mean()
+            self.weatherMetrics['WindSpeed_kph'] = weatherData['wspd'].mean()
+            self.weatherMetrics['WindGustSpeed_kph'] = weatherData['wpgt'].mean()
+            self.weatherMetrics['Condition'] = weatherData['coco'].map(weatherConditions).iloc[0]
+        else:
+            self.weatherMetrics = dict()
+            self.weatherMetrics['Temperature_degC'] = np.nan
+            self.weatherMetrics['Rain_mm'] = np.nan
+            self.weatherMetrics['WindSpeed_kph'] = np.nan
+            self.weatherMetrics['WindGustSpeed_kph'] = np.nan
+            self.weatherMetrics['Condition'] = ""
