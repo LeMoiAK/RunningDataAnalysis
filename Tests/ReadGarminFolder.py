@@ -18,7 +18,7 @@ import datetime
 from zipfile import ZipFile
 import os
 
-folderPath = Utils.getDataPath() + "\\2023_04_03_Complete"
+folderPath = Utils.getDataPath() + "\\2023_06_01_Complete"
 print(folderPath)
 
 #%% Try GarminDataImporter

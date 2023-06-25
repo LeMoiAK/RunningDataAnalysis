@@ -370,33 +370,42 @@ class ActivityImporter:
         
         # This function works only for running session and not Treadmill
         if 'start_position_lat_deg' in self.sessionMetrics.keys() and 'start_position_long_deg' in self.sessionMetrics.keys():
-            # Create startTime endTime and location from metrics
-            # Need to save then suppress the timezone information because of the Hourly function
-            origTZinfo = self.sessionMetrics['start_time'].tzname()
-            startTime = self.sessionMetrics['start_time'].replace(tzinfo=None)
-            endTime = self.sessionMetrics['start_time'] + datetime.timedelta(seconds=self.sessionMetrics['total_elapsed_time'])
-            endTime = endTime.replace(tzinfo=None)
-            endTime = endTime.replace(second=0, microsecond=0, minute=0, hour=endTime.hour+1) # Ensure there's at least an hour (but loss of precision)
-            
-            startPosLat = Utils.valuesOrDict(self.sessionMetrics, 'start_position_lat_deg', np.nan)
-            startPosLon = Utils.valuesOrDict(self.sessionMetrics, 'start_position_long_deg', np.nan)
-            location = Point(startPosLat, startPosLon, self.data['altitude'].iloc[0])
-    
-            # Get data
-            weatherData = Hourly(location, startTime, endTime, origTZinfo)
-            weatherData = weatherData.fetch()
-    
-            weatherConditions = {1: "Clear", 2: "Fair", 3: "Cloudy", 4: "Overcast", 5: "Fog", 6: "Freezing Fog", 7: "Light Rain", 8: "Rain", 9: "Heavy Rain",
-                                 10: "Freezing Rain", 11: "Heavy Freezing Rain", 12: "Sleet", 13: "Heavy Sleet", 14: "Light Snowfall", 15: "Snowfall",
-                                 16: "Heavy Snowfall", 17: "Rain Shower", 18: "Heavy Rain Shower", 19: "Sleet Shower", 20: "Heavy Sleet Shower",
-                                 21: "Snow Shower", 22: "Heavy Snow Shower", 23: "Lightning", 24: "Hail", 25: "Thunderstorm", 26: "Heavy Thunderstorm", 27: "Storm"}
-    
-            self.weatherMetrics = dict()
-            self.weatherMetrics['Temperature_degC'] = weatherData['temp'].mean()
-            self.weatherMetrics['Rain_mm'] = weatherData['prcp'].mean()
-            self.weatherMetrics['WindSpeed_kph'] = weatherData['wspd'].mean()
-            self.weatherMetrics['WindGustSpeed_kph'] = weatherData['wpgt'].mean()
-            self.weatherMetrics['Condition'] = weatherData['coco'].map(weatherConditions).iloc[0]
+            try:
+                # Create startTime endTime and location from metrics
+                # Need to save then suppress the timezone information because of the Hourly function
+                origTZinfo = self.sessionMetrics['start_time'].tzname()
+                startTime = self.sessionMetrics['start_time'].replace(tzinfo=None)
+                endTime = self.sessionMetrics['start_time'] + datetime.timedelta(seconds=self.sessionMetrics['total_elapsed_time'])
+                endTime = endTime.replace(tzinfo=None)
+                endTime = endTime.replace(second=0, microsecond=0, minute=0, hour=endTime.hour+1) # Ensure there's at least an hour (but loss of precision)
+                
+                startPosLat = Utils.valuesOrDict(self.sessionMetrics, 'start_position_lat_deg', np.nan)
+                startPosLon = Utils.valuesOrDict(self.sessionMetrics, 'start_position_long_deg', np.nan)
+                location = Point(startPosLat, startPosLon, self.data['altitude'].iloc[0])
+        
+                # Get data
+                weatherData = Hourly(location, startTime, endTime, origTZinfo)
+                weatherData = weatherData.fetch()
+        
+                weatherConditions = {1: "Clear", 2: "Fair", 3: "Cloudy", 4: "Overcast", 5: "Fog", 6: "Freezing Fog", 7: "Light Rain", 8: "Rain", 9: "Heavy Rain",
+                                     10: "Freezing Rain", 11: "Heavy Freezing Rain", 12: "Sleet", 13: "Heavy Sleet", 14: "Light Snowfall", 15: "Snowfall",
+                                     16: "Heavy Snowfall", 17: "Rain Shower", 18: "Heavy Rain Shower", 19: "Sleet Shower", 20: "Heavy Sleet Shower",
+                                     21: "Snow Shower", 22: "Heavy Snow Shower", 23: "Lightning", 24: "Hail", 25: "Thunderstorm", 26: "Heavy Thunderstorm", 27: "Storm"}
+        
+                self.weatherMetrics = dict()
+                self.weatherMetrics['Temperature_degC'] = weatherData['temp'].mean()
+                self.weatherMetrics['Rain_mm'] = weatherData['prcp'].mean()
+                self.weatherMetrics['WindSpeed_kph'] = weatherData['wspd'].mean()
+                self.weatherMetrics['WindGustSpeed_kph'] = weatherData['wpgt'].mean()
+                self.weatherMetrics['Condition'] = weatherData['coco'].map(weatherConditions).iloc[0]
+            except:
+                print('Can''t get Weather for: ' + self.fileInfo['filePath'])
+                self.weatherMetrics = dict()
+                self.weatherMetrics['Temperature_degC'] = np.nan
+                self.weatherMetrics['Rain_mm'] = np.nan
+                self.weatherMetrics['WindSpeed_kph'] = np.nan
+                self.weatherMetrics['WindGustSpeed_kph'] = np.nan
+                self.weatherMetrics['Condition'] = ""
         else:
             self.weatherMetrics = dict()
             self.weatherMetrics['Temperature_degC'] = np.nan
