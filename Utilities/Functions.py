@@ -9,6 +9,7 @@ Created on Sat Jun 17 16:11:42 2023
 
 #%% Required modules
 import pandas as pd
+import numpy as np
 import datetime
 
 
@@ -122,7 +123,7 @@ def speedToPace(speedMS):
     if isinstance(speedMS, pd.Series):
         return speedMS.apply(lambda speed: pd.to_datetime(1000/max(speed, 1/3.6), unit='s'))
     else:
-        return pd.to_datetime(1000/max(speedMS, 1/3.6), unit='s')
+        return pd.to_datetime(1000/np.maximum(speedMS, 1/3.6), unit='s')
 
 def convertRPMtoCadence(cadence_RPM, fractional_cadence):
     """
@@ -134,3 +135,22 @@ def convertRPMtoCadence(cadence_RPM, fractional_cadence):
     """
     cadence_spm = (cadence_RPM + fractional_cadence) * 2.0
     return cadence_spm
+
+#%% Math function
+def gaussianKernel(u):
+    """
+    Standard Gaussian Kernel (without bandwith)
+    """
+    return 1/np.sqrt(2*np.pi) * np.exp(-1/2*np.power(u, 2))
+
+def kernelRegressionSmoothing(xData, yData, xSmooth, bandWidth):
+    """ 
+    Kernel Regression Smoothing based on the Gaussian kernel.    
+    """
+    ySmooth = np.nan * xSmooth
+    for i in np.arange(len(xSmooth)):
+        x = xSmooth[i]
+        fracBottom = np.sum(gaussianKernel( (x - xData)/bandWidth ))
+        fracTop = np.sum( np.multiply(gaussianKernel( (x - xData)/bandWidth ), yData) )
+        ySmooth[i] = fracTop / fracBottom
+    return ySmooth
