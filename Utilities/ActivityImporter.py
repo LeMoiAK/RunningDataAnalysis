@@ -80,7 +80,8 @@ class ActivityImporter:
                     
         else:
             self.ObjInfo['isSportActivity'] = False
-                
+       
+            
     #%% Data formatting functions
     def transformRecordsToDataFrame(self, recordMessages):
         """
@@ -133,6 +134,36 @@ class ActivityImporter:
         
         # Save df into object name
         self.data = df
+        
+    def extractBestEffortTimeSeries(self, distanceName):
+        """
+        Creates a subset of the time series dataFrame that corresponds to the best effort.
+        """
+        
+        # Check we have the best efforts available
+        if not(self.ObjInfo['hasBestEfforts']):
+            print("Best Efforts are not available.")
+            return -1
+        
+        # Check the distance exists
+        if not(distanceName in self.bestEffortData['Names']):
+            print(f"{distanceName} is not recognised as a Best Effort distance")
+            return -1
+        idxDistance = self.bestEffortData['Names'].index(distanceName)
+        
+        # Check the distance has a time record
+        if np.isinf(self.bestEffortData['Times'][distanceName]):
+            print(f"{distanceName} has no best effort for this activity")
+            return -1
+        
+        # We now have a valid distance and can extract it from the dataFrame
+        idxStart = int(self.bestEffortData['index'][idxDistance, 0])
+        idxEnd   = int(self.bestEffortData['index'][idxDistance, 1])
+        dfBestEffort = self.data.iloc[idxStart:(idxEnd+1)].copy()
+        # Create a distance and time with 0 offset
+        dfBestEffort['distanceEffort'] = dfBestEffort['distance'] - dfBestEffort['distance'].iloc[0]
+        dfBestEffort['timeEffort'] = dfBestEffort['time'] - dfBestEffort['time'].iloc[0]
+        return dfBestEffort
     
     def extractMetricsAndInfo(self, messages):
         """
@@ -289,6 +320,7 @@ class ActivityImporter:
         distancesNamesList =  ['400m', '500m', '800m', '1km',            '1mile', '5km', '10km', '15km',             '10miles',             'HalfMarathon',             'FullMarathon']
         distancesValuesList = [ 400.0,  500.0,  800.0, 1.0e3, Utils.mileDistance, 5.0e3, 10.0e3, 15.0e3, 10*Utils.mileDistance, Utils.halfMarathonDistance, Utils.fullMarathonDistance]
         Ndistances = len(distancesNamesList)
+        bestEffortIndex = np.ones((Ndistances,2)) * np.nan # First column for start, second for finish index
 
         distanceArray = df['distance'].values
         timeArray = df['time'].values
@@ -317,7 +349,11 @@ class ActivityImporter:
                     if not(hasFoundDistance[thisDistName]) and distDelta >= thisDistValue:
                         hasFoundDistance[thisDistName] = True
                         if bestTimePerDistance[thisDistName] >= timeDelta:
-                            bestTimePerDistance[thisDistName] = timeDelta                
+                            # Found a new best effort for that distance
+                            # Update time and subset index
+                            bestTimePerDistance[thisDistName] = timeDelta   
+                            bestEffortIndex[iDist, 0] = idxStart
+                            bestEffortIndex[iDist, 1] = idxEnd
                         
                 # Times - not automated because only two
                 if not(hasFoundTime['12mins']) and timeDelta >= 12*60.0:
@@ -359,6 +395,12 @@ class ActivityImporter:
 
         # Finally save metrics to class
         self.bestEffortsMetrics = bestEffortsMetrics
+        # And save indexes because they'll be useful in the extractBestEffort function
+        self.bestEffortData = dict()
+        self.bestEffortData['index'] = bestEffortIndex
+        self.bestEffortData['Names'] = distancesNamesList
+        self.bestEffortData['Distances'] = distancesValuesList
+        self.bestEffortData['Times'] = bestTimePerDistance
     
     #%% Data augmentation functions
     def importWeather(self):
