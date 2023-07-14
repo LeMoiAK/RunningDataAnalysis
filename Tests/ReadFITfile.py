@@ -6,7 +6,6 @@ import pandas as pd
 import seaborn as sns
 import datetime
 import matplotlib.pyplot as plt
-from meteostat import Point, Hourly
 
 ###############################################################################
 #%% Test class
