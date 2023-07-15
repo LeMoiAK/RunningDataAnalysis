@@ -9,14 +9,18 @@ Created on Fri Jul 14 22:32:35 2023
 """
 
 #%% Import necessary libraries
+# Own libraries
 import Utilities.Functions as Utils
-from plotly.subplots import make_subplots
+# Graphing libraries
 import plotly.graph_objects as go
 import plotly.io as pio
 #pio.renderers.default = 'svg'
 pio.renderers.default= 'browser' # Set to render plots in a browser
+import matplotlib.pylab as pl
+# Data libraries
 import pandas as pd
 import numpy as np
+import datetime
 
 #%% Define the ActivityPlotter class
 class ActivityPlotter:
@@ -25,14 +29,14 @@ class ActivityPlotter:
     """
     
     @staticmethod
-    def effortComparePlot(dfList, namesList, title="", baselineIdx=0):
+    def effortComparePlot(dfList, namesList, graphTitle="", baselineIdx=0):
         """
         Standard plot to compare two best efforts on a single standard plot.
         Shows pace, time difference, heart rate and elevation.
         
         dfList contains all dataFrames of activities to compare.
         namesList contains their respective names for legends.
-        title is an optional title for the graph.
+        graphTitle is an optional title for the graph.
         baselineIdx is the index of the baseline activity for time delta.
         """
         
@@ -61,67 +65,88 @@ class ActivityPlotter:
         # Calculate Tdiff
         for idx in np.arange(Nact):
             dfInterp[idx]['timeDelta'] = dfInterp[idx]['time'] - dfInterp[baselineIdx]['time']
+        # Add column with name before merging into single dataFrame        
+        for idx in np.arange(Nact):
+            dfInterp[idx]['activityName'] = namesList[idx]
         
-        # Plot the graphs
-        fig = make_subplots(rows=3, cols=1)
+        # Get list of times then add them to names of activities
+        endTimeList = [Utils.format_timedelta(datetime.timedelta(seconds= round(df['time'].iloc[-1]))) for df in dfInterp]
+        endTimeDeltaList = [" (" + Utils.format_timedelta(datetime.timedelta(seconds= round(df['timeDelta'].iloc[-1]))) + ")" for df in dfInterp]
+        endTimeDeltaList[baselineIdx] = " (baseline)"
+        namesListWithTime = [thisName + " - " + thisTimeStr + thisTimeDeltaStr for thisName, thisTimeStr, thisTimeDeltaStr in zip(namesList, endTimeList, endTimeDeltaList)]
+                        
+        # Manual test
+        tracesList = []
+        myColors = ["rgba({cr:.0f},{cg:.0f},{cb:.0f},{ca:.0f})".format(cr=c[0]*255,cg=c[1]*255,cb=c[2]*255,ca=c[3]*255) for c in pl.cm.jet(np.linspace(0.0, 1.0, Nact))]
         # Time delta
         for idx in np.arange(Nact):
-            fig.add_scatter(x=dfInterp[idx]['distance'], y=dfInterp[idx]['timeDelta'], mode='lines', name=namesList[idx], row=1, col=1)
-        fig.update_layout(
-           title = title,
-           xaxis_title = "Distance",
-           yaxis_title = "Time Delta (s)",
-           legend_title = "Activity Name"
-        )
+            tracesList.append(
+                    go.Scatter(
+                        x= dfInterp[idx]['distance'],
+                        y= dfInterp[idx]['timeDelta'],
+                        name= namesListWithTime[idx],
+                        marker= dict(color= myColors[idx]),
+                        legendgroup= namesList[idx],
+                        yaxis="y3"
+                    )
+                )
         # Pace
         for idx in np.arange(Nact):
-            fig.add_scatter(x=dfInterp[idx]['distance'], y=dfInterp[idx]['pace'], mode='lines', row=2, col=1)
-        fig.update_layout(
-           title = title,
-           xaxis_title = "Distance",
-           yaxis_title = "Pace (min/km)",
-           legend_title = "Activity Name"
-        )
-        # Heart Rate
+            tracesList.append(
+                    go.Scatter(
+                        x= dfInterp[idx]['distance'],
+                        y= dfInterp[idx]['pace'],
+                        name= namesListWithTime[idx],
+                        marker= dict(color= myColors[idx]),
+                        legendgroup= namesList[idx],
+                        showlegend= False,
+                        yaxis="y2"
+                    )
+                )
+        # Pace
         for idx in np.arange(Nact):
-            fig.add_scatter(x=dfInterp[idx]['distance'], y=dfInterp[idx]['heart_rate'], mode='lines', row=3, col=1)
-        fig.update_layout(
-           title = title,
-           xaxis_title = "Distance",
-           yaxis_title = "Heart Rate (bpm)",
-           legend_title = "Activity Name"
-        )
-        fig.show()
+            tracesList.append(
+                    go.Scatter(
+                        x= dfInterp[idx]['distance'],
+                        y= dfInterp[idx]['heart_rate'],
+                        name= namesListWithTime[idx],
+                        marker= dict(color= myColors[idx]),
+                        legendgroup= namesList[idx],
+                        showlegend= False,
+                        yaxis="y"
+                    )
+                )
         
-        # Manual test
-        trace1 = go.Scatter(
-            x=[0, 1, 2],
-            y=[10, 11, 12]
-        )
-        trace2 = go.Scatter(
-            x=[2, 3, 4],
-            y=[100, 110, 120],
-            yaxis="y2"
-        )
-        trace3 = go.Scatter(
-            x=[3, 4, 5],
-            y=[1000, 1100, 1200],
-            yaxis="y3"
-        )
-        data = [trace1, trace2, trace3]
+        # Then create Layout
         layout = go.Layout(
             yaxis=dict(
-                domain=[0, 0.33],
+                domain=[0.00, 0.32],
+                title= "Heart Rate (bpm)",
+                tickformat= ".0f"
             ),
             legend=dict(
-                traceorder="reversed"
+                orientation="h",
+                yanchor= "bottom",
+                y= 1.02,
+                xanchor= "right",
+                x= 1
             ),
             yaxis2=dict(
-                domain=[0.33, 0.66]
+                domain=[0.34, 0.65],
+                title= "Pace (min/km)",
+                tickformat= "%M:%S"
             ),
             yaxis3=dict(
-                domain=[0.66, 1]
+                domain=[0.67, 1.00],
+                title= "Time delta (s)",
+                tickformat= ".0f"
             )
         )
-        fig = go.Figure(data=data, layout=layout)
+        
+        # Finally create figure
+        fig = go.Figure(data= tracesList,
+                        layout= layout
+                        )
+        fig.update_layout(title= graphTitle)
+        fig.update_xaxes(title_text= "Distance (m)")
         fig.show()

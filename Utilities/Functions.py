@@ -12,7 +12,6 @@ import pandas as pd
 import numpy as np
 import datetime
 
-
 #%% Useful constants
 halfMarathonDistance = 21.0975e3  # in meters
 fullMarathonDistance = 42.195e3   # in meters
@@ -154,3 +153,14 @@ def kernelRegressionSmoothing(xData, yData, xSmooth, bandWidth):
         fracTop = np.sum( np.multiply(gaussianKernel( (x - xData)/bandWidth ), yData) )
         ySmooth[i] = fracTop / fracBottom
     return ySmooth
+
+#%% Formatting functions
+def format_timedelta(td):
+    """
+    Formats Timedeltas nicely to deal with negatives rather than showing a full day minus the desired time
+    """
+    if td < datetime.timedelta(0):
+        return '-' + format_timedelta(-td)
+    else:
+        # Change this to format positive timedeltas the way you want
+        return str(td)

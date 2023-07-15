@@ -13,13 +13,11 @@ from Utilities.ActivityPlotter import ActivityPlotter as actp
 
 #%% Import the data from several activities
 filePathList = [Utils.getDataPath() + "\\10765570476_ACTIVITY.fit", 
-                Utils.getDataPath() + "\\11259017918_ACTIVITY.fit", 
-                Utils.getDataPath() + "\\11329404102_ACTIVITY.fit"
+                Utils.getDataPath() + "\\11259017918_ACTIVITY.fit"
                 ]
 
 namesList = ["Activity 1 10765570476",
-             "Activity 2 11259017918",
-             "Activity 3 11329404102"
+             "Activity 2 11259017918"
              ]
 
 activityList = [ActivityImporter(thisPath) for thisPath in filePathList] # Get Activities
@@ -27,4 +25,4 @@ metrics = [thisAct.exportUsefulMetrics() for thisAct in activityList] # Get Metr
 df5kmList = [thisAct.extractBestEffortTimeSeries('5km') for thisAct in activityList] # Get 5k dataFrames
 
 #%% Now plots the data
-actp.effortComparePlot(df5kmList, namesList, title="Comparison of 5km races")
+actp.effortComparePlot(df5kmList, namesList, graphTitle="Comparison of 5km races")
