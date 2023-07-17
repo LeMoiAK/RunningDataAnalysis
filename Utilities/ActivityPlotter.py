@@ -134,6 +134,7 @@ class ActivityPlotter:
             yaxis2=dict(
                 domain=[0.34, 0.65],
                 title= "Pace (min/km)",
+                autorange="reversed",
                 tickformat= "%M:%S"
             ),
             yaxis3=dict(
