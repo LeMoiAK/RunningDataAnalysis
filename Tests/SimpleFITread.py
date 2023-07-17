@@ -11,6 +11,7 @@ Created on Mon Jul 17 21:52:24 2023
 # Imports the ActivityImporter class
 import Utilities.Functions as Utils
 from Utilities.ActivityImporter import ActivityImporter
+from Utilities.ActivityPlotter import ActivityPlotter as actp
 
 # Necessqry just for plotting
 import plotly.express as px
@@ -33,3 +34,6 @@ df['time'] = (df['timestamp'] - df['timestamp'].iloc[0]).apply(lambda x: x.total
 fig = px.scatter_geo(df, lat='position_lat_deg', lon='position_long_deg', color="speed_kph", hover_name="speed_kph", scope="europe")
 fig.update_layout(title = 'Position', title_x= 0.5)
 fig.show()
+
+#%% Try ActivityPlotter
+actp.effortComparePlot([df], ["Test"], graphTitle="Single Plot")

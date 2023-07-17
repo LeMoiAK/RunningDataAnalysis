@@ -40,6 +40,13 @@ class ActivityPlotter:
         baselineIdx is the index of the baseline activity for time delta.
         """
         
+        # Make sure distanceEffort is available
+        for thisDF in dfList:
+            if not('distanceEffort' in thisDF.columns):
+                thisDF['distanceEffort'] = thisDF['distance'] - thisDF['distance'].iloc[0]
+            if not('timeEffort' in thisDF.columns):
+                thisDF['timeEffort'] = thisDF['time'] - thisDF['time'].iloc[0]
+        
         # Interpolates all dataFrames into the distance of the first one
         # For the first one, it is just a copy. But others need to be recreated
         # because they potentially have a different size
