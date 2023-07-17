@@ -455,3 +455,32 @@ class ActivityImporter:
             self.weatherMetrics['WindSpeed_kph'] = np.nan
             self.weatherMetrics['WindGustSpeed_kph'] = np.nan
             self.weatherMetrics['Condition'] = ""
+            
+    #%% Static methods
+    @staticmethod
+    def loadDataFromFitFile(filePath):
+        """
+        Function to load a single fit file and return the time series of the data
+        without all the change to units, names, and other transformations.
+        Should work with any kind of activity.
+        Bare minimum code to read a FIT file.
+        """
+        
+        # Creates a stream and decoder object from the Garmin SDK to import data
+        stream = Stream.from_file(filePath)
+        decoder = Decoder(stream)
+        # Then does the decoding
+        messages, errors = decoder.read()
+        
+        # Checks for errors
+        if len(errors) > 0:
+            print(f"Could not decode {filePath}: {errors}")
+            return -1
+        
+        # Get into dataFrame
+        if "record_mesgs" in messages:
+            df = pd.DataFrame(messages['record_mesgs'])
+            return df
+        else:
+            print(f"No record messages in {filePath}")
+            return -1
