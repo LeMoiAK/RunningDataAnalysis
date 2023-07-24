@@ -26,4 +26,19 @@ yDescent = np.sum(yAltDiff[yAltDiff < 0.0])
 # Altitude is wrong, there is some level of correction happening when the run is processed by Garmin
 
 #%% Check the Best Effort subset
-df5km = actImp.extractBestEffortTimeSeries('5km')
+df5km = actImp.extractBestEffortTimeSeries('12mins')
+
+#%% Create Graph of best pace vs time
+x = np.array(actImp.bestEffortData['Time_Times'])
+y = np.array(actImp.bestEffortData['Time_Paces'])
+y[y > datetime.datetime(1970, 1, 1, 00, 30, 00)] = np.nan
+idxFilter = np.array(actImp.bestEffortData['Time_Paces']) < datetime.datetime(1970, 1, 1, 1, 00, 00)
+x = x[idxFilter]
+y = y[idxFilter]
+
+plt.Figure()
+plt.plot(x/60.0, y, marker='.')
+plt.xlabel('Effort Time (mins)')
+plt.ylabel('Pace for that effort (min/km)')
+plt.grid()
+plt.show()
