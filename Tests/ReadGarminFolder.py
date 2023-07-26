@@ -9,6 +9,7 @@ Created on Sun Jun 18 18:05:44 2023
 import Utilities.Functions as Utils
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import glob
 from Utilities.GarminDataImporter import GarminDataImporter
@@ -113,3 +114,22 @@ plt.xlabel('Date')
 plt.ylabel('VO2max estimation (mL/kg/min)')
 plt.grid(True)
 plt.title('VO2max estimation Evolution over Time')
+
+#%% Test best pace per period
+dateRange = pd.date_range(start= metricsDF["Metric_StartTime"].min(), end= metricsDF["Metric_StartTime"].max(), freq = "90D")
+dateRange = dateRange.union(pd.date_range(dateRange[-1] + dateRange.freq, periods=1, freq=dateRange.freq))
+
+# Finally plot to give an idea
+plt.Figure()
+for i in np.arange(1,len(dateRange)):
+    periodStart = dateRange[i-1]
+    periodEnd   = dateRange[i]
+    (timesNamesList, timesValuesArray, bestDistancePerTimeAllActivities, bestPacePerTimeAllActivities) = gdi.getBestPacePerTimeEffortForPeriod( periodStart, periodEnd)
+    thisLabel = "From " + str(periodStart.date()) + " to " + str(periodEnd.date())
+    plt.plot(timesValuesArray/60.0, bestPacePerTimeAllActivities, marker='.', label= thisLabel)
+plt.xlabel('Effort Time (mins)')
+plt.ylabel('Pace for that effort (min/km)')
+plt.legend()
+plt.gca().invert_yaxis()
+plt.grid()
+plt.show()

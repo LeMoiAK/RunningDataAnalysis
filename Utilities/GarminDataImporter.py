@@ -226,3 +226,32 @@ class GarminDataImporter:
         # Save the list of importers and their respective files
         self.activityImporters = activityImporters
         self.activityFiles = activityFiles
+        
+    #%% Data Export Functions
+    def getBestPacePerTimeEffortForPeriod(self, periodStart, periodEnd):
+        """
+        Finds the best effort distances and paces among all activities in the
+        given time frame defined ny periodStart and periodEnd.
+        """
+        
+        # Find the activities that are in the period
+        idxActivities = self.activityMetricsDF.index[(periodStart < self.activityMetricsDF["Metric_StartTime"]) & (self.activityMetricsDF["Metric_StartTime"] <= periodEnd)]
+        # Get their times and paces into an array
+        Nactivities = len(idxActivities)
+        NTimes = len(self.activityImporters[idxActivities[0]].bestEffortData['Time_Times'])
+        timesNamesList = self.activityImporters[idxActivities[0]].bestEffortData['Time_Names']
+        timesValuesArray = np.array(self.activityImporters[idxActivities[0]].bestEffortData['Time_Times'])
+
+        bestDistancePerTime = np.ones((Nactivities,NTimes)) * np.nan
+        bestPacePerTime = np.empty((Nactivities,NTimes), dtype='datetime64[us]')
+
+        for i in np.arange(Nactivities):
+            thisActIdx = idxActivities[i]
+            bestDistancePerTime[i, :] = np.array(list(self.activityImporters[thisActIdx].bestEffortData['Time_Distances'].values()))
+            bestPacePerTime[i, :] = np.array(self.activityImporters[thisActIdx].bestEffortData['Time_Paces'], dtype='datetime64')
+            
+        # Then get the best pace among all the activities and return it
+        bestDistancePerTimeAllActivities = bestDistancePerTime.max(axis=0)
+        bestPacePerTimeAllActivities = bestPacePerTime.min(axis=0)
+        
+        return (timesNamesList, timesValuesArray, bestDistancePerTimeAllActivities, bestPacePerTimeAllActivities)
