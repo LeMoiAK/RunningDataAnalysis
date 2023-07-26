@@ -14,6 +14,7 @@ import seaborn as sns
 import glob
 from Utilities.GarminDataImporter import GarminDataImporter
 from Utilities.ActivityImporter import ActivityImporter
+from Utilities.ActivityPlotter import ActivityPlotter as actp
 import json
 import datetime
 from zipfile import ZipFile
@@ -133,3 +134,6 @@ plt.legend()
 plt.gca().invert_yaxis()
 plt.grid()
 plt.show()
+
+#%% Use Activity Plotter to make cleaner graph of best pace evolution
+actp.bestEffortPerTimeEvolutionPlot(gdi)

@@ -158,3 +158,75 @@ class ActivityPlotter:
         fig.update_layout(title= graphTitle)
         fig.update_xaxes(title_text= "Distance (m)")
         fig.show()
+        
+    @staticmethod
+    def bestEffortPerTimeEvolutionPlot(gdi):
+        """
+        Obtains then plots the evolution of the best effort pace per time for
+        each period of 90 days. We can then see the evolution of best pace over time.
+        Takes a GarminDataImporter with imported data as input.
+        """
+        
+        # First obtain date range from the metrics
+        dateRange = pd.date_range(start= gdi.activityMetricsDF["Metric_StartTime"].min(), end= gdi.activityMetricsDF["Metric_StartTime"].max(), freq = "90D")
+        # Add one period to make sure we have the latest activities as well
+        dateRange = dateRange.union(pd.date_range(dateRange[-1] + dateRange.freq, periods=1, freq=dateRange.freq))
+        
+        # Create the colors
+        NdateRanges = len(dateRange)
+        myColors = ["rgba({cr:.0f},{cg:.0f},{cb:.0f},{ca:.0f})".format(cr=c[0]*255,cg=c[1]*255,cb=c[2]*255,ca=c[3]*255) for c in pl.cm.coolwarm(np.linspace(0.0, 1.0, NdateRanges))]
+        
+        # Get data for each range then create a plot with the valid points
+        tracesList = []
+        for iPeriod in np.arange(1, NdateRanges):
+            # Get data from GDI
+            periodStart = dateRange[iPeriod-1]
+            periodEnd   = dateRange[iPeriod]
+            (timesNamesList, timesValuesArray, bestDistancePerTimeAllActivities, bestPacePerTimeAllActivities) = gdi.getBestPacePerTimeEffortForPeriod( periodStart, periodEnd)
+            thisLabel = "From " + str(periodStart.date()) + " to " + str(periodEnd.date())
+            
+            # Filter data only to available points that have an effort (1h per km by default)
+            xData = timesValuesArray
+            yData = bestPacePerTimeAllActivities
+            idxFilter = bestPacePerTimeAllActivities < datetime.datetime(1970, 1, 1, 1, 00, 00)
+            xData = xData[idxFilter]
+            yData = yData[idxFilter]
+            
+            tracesList.append(
+                    go.Scatter(
+                        x= xData/60,
+                        y= yData,
+                        name= thisLabel,
+                        marker= dict(color= myColors[iPeriod], size=20),
+                        legendgroup= thisLabel,
+                        showlegend= True,
+                        yaxis= "y",
+                        line= dict(width=3)
+                    )
+                )
+            
+        # Then create Layout
+        layout = go.Layout(
+            legend=dict(
+                orientation="h",
+                yanchor= "bottom",
+                y= 1.02,
+                xanchor= "right",
+                x= 1,
+                font_size= 13
+            ),
+            yaxis=dict(
+                domain=[0.00, 1.00],
+                title= "Pace (min/km)",
+                autorange="reversed",
+                tickformat= "%M:%S"
+            )
+        )
+        
+        # Finally create figure
+        fig = go.Figure(data= tracesList,
+                        layout= layout
+                        )
+        fig.update_layout(title= "Evolution of Best Pace per Time for periods of 90 days", font_size=20)
+        fig.update_xaxes(title_text= "Time (mins)")
+        fig.show()
