@@ -137,3 +137,6 @@ plt.show()
 
 #%% Use Activity Plotter to make cleaner graph of best pace evolution
 actp.bestEffortPerTimeEvolutionPlot(gdi)
+
+#%% Same graph but distance rather than time
+actp.bestEffortPerDistanceEvolutionPlot(gdi)
