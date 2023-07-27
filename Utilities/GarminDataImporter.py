@@ -20,8 +20,115 @@ import datetime
 from zipfile import ZipFile
 import os
 
+#%% StandardDataImporter class
+class StandardDataImporter:
+    """
+    This class defines methods common to all DataImporters. Other importers can
+    then inherit from it and define their own methods.
+    """
+    
+    #%% Data Import Methods
+    def importActivityFiles(self, listActFitFiles):
+        """
+        Imports the activity files and aggregates the metrics into a single table.
+        listActFitFiles is given and contains the list of all fit files to consider
+        Then all files are read and filtered to only the running activities.
+        Other fit files are deleted. Finally, a dataFrame with all metrics is generated.
+        """
+        
+        # Import the fit files with the ActivityImporter
+        activityImporters = []
+        activityFiles = []
+        NONactivityFiles = []
+        NONrunningFiles = []
+        NFitFiles = len(listActFitFiles)
+        Utils.printProgressBar(0, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        for i, ActFitFile in enumerate(listActFitFiles):
+            thisImporter = ActivityImporter(ActFitFile)
+            # Check the validity of the imported fit file
+            if thisImporter.ObjInfo['DecodeSuccess'] and thisImporter.ObjInfo['isSportActivity']:
+                # This is valid activity, we keep all valid files but import only running activities
+                if 'running' in thisImporter.ObjInfo['sport']:
+                    activityImporters.append(thisImporter)
+                    activityFiles.append(ActFitFile)
+                else:
+                    NONrunningFiles.append(ActFitFile)
+            else:
+                NONactivityFiles.append(ActFitFile)
+            Utils.printProgressBar(i + 1, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
+        # Finally, go through the Imported Activities, get their metrics and create a table
+        metricsList = []
+        for activity in activityImporters:
+            metricsList.append(activity.exportUsefulMetrics())
+        self.activityMetricsDF = pd.DataFrame(metricsList)
+        
+        # Save the list of importers and their respective files
+        self.activityImporters = activityImporters
+        self.activityFiles = activityFiles
+        
+        # Finally returns the list of files to be deleted because they are not activity files
+        return (NONactivityFiles, NONrunningFiles)
+    
+    #%% Data Export Methods
+    def getBestPacePerTimeEffortForPeriod(self, periodStart, periodEnd):
+        """
+        Finds the best effort distances and paces among all activities in the
+        given time frame defined by periodStart and periodEnd.
+        """
+        
+        # Find the activities that are in the period
+        idxActivities = self.activityMetricsDF.index[(periodStart < self.activityMetricsDF["Metric_StartTime"]) & (self.activityMetricsDF["Metric_StartTime"] <= periodEnd)]
+        # Get their times and paces into an array
+        Nactivities = len(idxActivities)
+        NTimes = len(self.activityImporters[idxActivities[0]].bestEffortData['Time_Times'])
+        timesNamesList = self.activityImporters[idxActivities[0]].bestEffortData['Time_Names']
+        timesValuesArray = np.array(self.activityImporters[idxActivities[0]].bestEffortData['Time_Times'])
+
+        bestDistancePerTime = np.ones((Nactivities,NTimes)) * np.nan
+        bestPacePerTime = np.empty((Nactivities,NTimes), dtype='datetime64[us]')
+
+        for i in np.arange(Nactivities):
+            thisActIdx = idxActivities[i]
+            bestDistancePerTime[i, :] = np.array(list(self.activityImporters[thisActIdx].bestEffortData['Time_Distances'].values()))
+            bestPacePerTime[i, :] = np.array(self.activityImporters[thisActIdx].bestEffortData['Time_Paces'], dtype='datetime64')
+            
+        # Then get the best pace among all the activities and return it
+        bestDistancePerTimeAllActivities = bestDistancePerTime.max(axis=0)
+        bestPacePerTimeAllActivities = bestPacePerTime.min(axis=0)
+        
+        return (timesNamesList, timesValuesArray, bestDistancePerTimeAllActivities, bestPacePerTimeAllActivities)
+    
+    def getBestPacePerDistanceEffortForPeriod(self, periodStart, periodEnd):
+        """
+        Finds the best effort paces  per distance among all activities in the
+        given time frame defined by periodStart and periodEnd.
+        """
+        
+        # Find the activities that are in the period
+        idxActivities = self.activityMetricsDF.index[(periodStart < self.activityMetricsDF["Metric_StartTime"]) & (self.activityMetricsDF["Metric_StartTime"] <= periodEnd)]
+        # Get their times and paces into an array
+        Nactivities = len(idxActivities)
+        NTimes = len(self.activityImporters[idxActivities[0]].bestEffortData['Distance_Distances'])
+        distancesNamesList = self.activityImporters[idxActivities[0]].bestEffortData['Distance_Names']
+        distancesValuesArray = np.array(self.activityImporters[idxActivities[0]].bestEffortData['Distance_Distances'])
+
+        bestTimePerDistance = np.ones((Nactivities,NTimes)) * np.nan
+        bestPacePerDistance = np.empty((Nactivities,NTimes), dtype='datetime64[us]')
+
+        for i in np.arange(Nactivities):
+            thisActIdx = idxActivities[i]
+            bestTimePerDistance[i, :] = np.array(list(self.activityImporters[thisActIdx].bestEffortData['Distance_Times'].values()))
+            bestPacePerDistance[i, :] = np.array(self.activityImporters[thisActIdx].bestEffortData['Distance_Paces'], dtype='datetime64')
+            
+        # Then get the best pace among all the activities and return it
+        bestTimePerDistanceAllActivities = bestTimePerDistance.max(axis=0)
+        bestPacePerDistanceAllActivities = bestPacePerDistance.min(axis=0)
+        
+        return (distancesNamesList, distancesValuesArray, bestTimePerDistanceAllActivities, bestPacePerDistanceAllActivities)
+
 #%% GarminDataImporter class
-class GarminDataImporter:
+class GarminDataImporter(StandardDataImporter): # Inherits from StandardDataImporter
     """
     This class imports data from all files contained within the folder of data provided by Garmin.
     """
@@ -59,8 +166,7 @@ class GarminDataImporter:
         if importActivities:
             self.importActivityFiles()
         
-    
-    
+        
     #%% Data Import method
     def importUserProfile(self):
         """
@@ -177,6 +283,9 @@ class GarminDataImporter:
         
     def importActivityFiles(self):
         """
+        Redefine method from parent class. For the GarminDataImporter, we need to
+        extract the zip file containing all files.
+        
         Imports the activity files and aggregates the metrics into a single table.
         There are several steps. First the zip files are extracted into the same folder.
         Then all files are read and filtered to only the running activities.
@@ -195,91 +304,58 @@ class GarminDataImporter:
         # Get a list of all the fit files
         listActFitFiles = glob.glob(activityFolder + "\\*.fit")
 
-        # Import the fit files with the ActivityImporter
-        activityImporters = []
-        activityFiles = []
-        NONactivityFilesToRemove = []
-        NFitFiles = len(listActFitFiles)
-        Utils.printProgressBar(0, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
-        for i, ActFitFile in enumerate(listActFitFiles):
-            thisImporter = ActivityImporter(ActFitFile)
-            # Check the validity of the imported fit file
-            if thisImporter.ObjInfo['DecodeSuccess'] and thisImporter.ObjInfo['isSportActivity'] and 'running' in thisImporter.ObjInfo['sport']:
-                # This is valid
-                activityImporters.append(thisImporter)
-                activityFiles.append(ActFitFile)
-            else:
-                NONactivityFilesToRemove.append(ActFitFile)
-            Utils.printProgressBar(i + 1, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
-
-        # Delete all extracted files that are not valid activities
-        for fileToRM in NONactivityFilesToRemove:
-            if os.path.isfile(fileToRM):
-                os.remove(fileToRM)
-
-        # Finally, go through the Imported Activities, get their metrics and create a table
-        metricsList = []
-        for activity in activityImporters:
-            metricsList.append(activity.exportUsefulMetrics())
-        self.activityMetricsDF = pd.DataFrame(metricsList)
+        # Import the fit files using the parent class
+        (NONactivityFiles, NONrunningFiles) = super().importActivityFiles(listActFitFiles)
         
-        # Save the list of importers and their respective files
-        self.activityImporters = activityImporters
-        self.activityFiles = activityFiles
+        # Stopped removing files that are not activity files. This should not be
+        # an automatic process.
         
-    #%% Data Export Functions
-    def getBestPacePerTimeEffortForPeriod(self, periodStart, periodEnd):
-        """
-        Finds the best effort distances and paces among all activities in the
-        given time frame defined ny periodStart and periodEnd.
-        """
-        
-        # Find the activities that are in the period
-        idxActivities = self.activityMetricsDF.index[(periodStart < self.activityMetricsDF["Metric_StartTime"]) & (self.activityMetricsDF["Metric_StartTime"] <= periodEnd)]
-        # Get their times and paces into an array
-        Nactivities = len(idxActivities)
-        NTimes = len(self.activityImporters[idxActivities[0]].bestEffortData['Time_Times'])
-        timesNamesList = self.activityImporters[idxActivities[0]].bestEffortData['Time_Names']
-        timesValuesArray = np.array(self.activityImporters[idxActivities[0]].bestEffortData['Time_Times'])
-
-        bestDistancePerTime = np.ones((Nactivities,NTimes)) * np.nan
-        bestPacePerTime = np.empty((Nactivities,NTimes), dtype='datetime64[us]')
-
-        for i in np.arange(Nactivities):
-            thisActIdx = idxActivities[i]
-            bestDistancePerTime[i, :] = np.array(list(self.activityImporters[thisActIdx].bestEffortData['Time_Distances'].values()))
-            bestPacePerTime[i, :] = np.array(self.activityImporters[thisActIdx].bestEffortData['Time_Paces'], dtype='datetime64')
-            
-        # Then get the best pace among all the activities and return it
-        bestDistancePerTimeAllActivities = bestDistancePerTime.max(axis=0)
-        bestPacePerTimeAllActivities = bestPacePerTime.min(axis=0)
-        
-        return (timesNamesList, timesValuesArray, bestDistancePerTimeAllActivities, bestPacePerTimeAllActivities)
+                
+#%% WatchOffloadDataImporter class
+class WatchOffloadDataImporter(StandardDataImporter): # Inherits from StandardDataImporter
+    """
+    This class imports data from all files contained within the folder of data offloaded manually by the user.
+    """
     
-    def getBestPacePerDistanceEffortForPeriod(self, periodStart, periodEnd):
+    def __init__(self, folderPath, importActivities=True):
         """
-        Finds the best effort paces  per distance among all activities in the
-        given time frame defined ny periodStart and periodEnd.
+        Constructor of the WatchOffloadDataImporter class
+
+        Parameters
+        ----------
+        folderPath : String
+            Path to the root folder of the Folder containing the watch offload.
+        importActivities : String, optional
+            Bool on whether to import the activity files. WARNING IS SLOW. The default is True.
+
+        Returns
+        -------
+        None.
+
+        """        
+        
+        # Save folder for us in other methods
+        self.rootFolder = folderPath
+        
+        # Imports the activities if requested
+        if importActivities:
+            self.importActivityFiles()
+    
+    def importActivityFiles(self):
+        """
+        Redefine method from parent class. For the WatchOffloadDataImporter, we need to
+        just need to get the list of files contained within the folder.
+        
+        Imports the activity files and aggregates the metrics into a single table.
+        All files are read and filtered to only the running activities.
+        Finally, a dataFrame with all metrics is generated.
         """
         
-        # Find the activities that are in the period
-        idxActivities = self.activityMetricsDF.index[(periodStart < self.activityMetricsDF["Metric_StartTime"]) & (self.activityMetricsDF["Metric_StartTime"] <= periodEnd)]
-        # Get their times and paces into an array
-        Nactivities = len(idxActivities)
-        NTimes = len(self.activityImporters[idxActivities[0]].bestEffortData['Distance_Distances'])
-        distancesNamesList = self.activityImporters[idxActivities[0]].bestEffortData['Distance_Names']
-        distancesValuesArray = np.array(self.activityImporters[idxActivities[0]].bestEffortData['Distance_Distances'])
+        # Get a list of all the fit files
+        listActFitFiles = glob.glob(self.rootFolder + "\\*.fit")
 
-        bestTimePerDistance = np.ones((Nactivities,NTimes)) * np.nan
-        bestPacePerDistance = np.empty((Nactivities,NTimes), dtype='datetime64[us]')
-
-        for i in np.arange(Nactivities):
-            thisActIdx = idxActivities[i]
-            bestTimePerDistance[i, :] = np.array(list(self.activityImporters[thisActIdx].bestEffortData['Distance_Times'].values()))
-            bestPacePerDistance[i, :] = np.array(self.activityImporters[thisActIdx].bestEffortData['Distance_Paces'], dtype='datetime64')
-            
-        # Then get the best pace among all the activities and return it
-        bestTimePerDistanceAllActivities = bestTimePerDistance.max(axis=0)
-        bestPacePerDistanceAllActivities = bestPacePerDistance.min(axis=0)
+        # Import the fit files using the parent class
+        (NONactivityFiles, NONrunningFiles) = super().importActivityFiles(listActFitFiles)
         
-        return (distancesNamesList, distancesValuesArray, bestTimePerDistanceAllActivities, bestPacePerDistanceAllActivities)
+        # No need to delete or remove the fit files here because cleaning is done elsewhere
+        # Might decide to add cleaning here as well, but wanted to keep cleaning separate so folders can be separate.        
