@@ -17,6 +17,7 @@ from Utilities.GarminDataImporter import GarminDataImporter,WatchOffloadDataImpo
 from Utilities.ActivityImporter import ActivityImporter
 from Utilities.ActivityPlotter import ActivityPlotter as actp
 import Utilities.Functions as Utils
+import seaborn as sns
 
 #%% Import the run data to get the HR metrics
 folderPath = Utils.getDataPath() + "\\WatchOffloadRaw"
@@ -44,4 +45,58 @@ metricsDF_light = metricsDF[['Metric_StartTime', 'Metric_TotalTimerTime', 'Metri
 
 fullDF = pd.merge(metricsDF_light, stravaDF_light, on='Metric_StartTime', how='inner')
 
+#%% Now data exploration
+sns.pairplot(fullDF)
+
 #%% Create linear model of RE as a function of time in each zone
+X = fullDF[['HR_Time_Zone_0', 'HR_Time_Zone_1', 'HR_Time_Zone_2',
+            'HR_Time_Zone_3','HR_Time_Zone_4', 'HR_Time_Zone_5',
+            'HR_Time_Zone_6']]
+y = fullDF['Relative Effort']
+
+# Split data into test and train
+# Not so great to have only 173 data points
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=101)
+
+# Train the model
+from sklearn.linear_model import LinearRegression
+lm = LinearRegression()
+lm.fit(X_train, y_train)
+
+# Evaluate quality of model
+coeff_df = pd.DataFrame(lm.coef_, X.columns, columns=['Coefficient'])
+y_pred = lm.predict(X_test)
+from sklearn import metrics
+print('MAE:', metrics.mean_absolute_error(y_test, y_pred))
+print('MSE:', metrics.mean_squared_error(y_test, y_pred))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+
+yDF = pd.DataFrame(dict(trueValue=y_test, prediction=y_pred))
+sns.scatterplot(data=yDF, x='trueValue', y='prediction')
+
+#%% Get confidence intervals on the regression coefficients
+from scipy import stats
+alpha = 0.05
+coefs = np.r_[[lm.intercept_], lm.coef_]
+X_aux = X_train.copy()
+X_aux.insert(0, 'const', 1)
+# degrees of freedom
+dof = -np.diff(X_aux.shape)[0]
+# Student's t-distribution table lookup
+t_val = stats.t.isf(alpha/2, dof)
+# MSE of the residuals
+mse = np.sum((y_train - lm.predict(X_train)) ** 2) / dof
+# inverse of the variance of the parameters
+var_params = np.diag(np.linalg.inv(X_aux.T.dot(X_aux)))
+# distance between lower and upper bound of CI
+gap = t_val * np.sqrt(mse * var_params)
+
+conf_int = pd.DataFrame({'lower': coefs - gap, 'upper': coefs + gap}, index=X_aux.columns)
+
+#%% Comments
+# Seeing these results, it is obvious that it is not working and while the correlation
+# should be strong, it is rather bad. The 95% confidence intervals are gigantic.
+# This is surprising because we expect the formula to be rather simple and just a
+# linear combination of times in each zone. A possible explanation is that zones 
+# are defined differently for Garmin and Strava. This is the next path of investigation.
