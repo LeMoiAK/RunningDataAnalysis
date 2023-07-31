@@ -344,22 +344,25 @@ class ActivityImporter:
         timeArray = df['time'].values
 
         # Go through the data point by point
-        for idxStart in np.arange(Nrows):
+        fullIdxArray = np.arange(Nrows) # Create the index array once to avoid calling np.arange many times
+        distIdxArray = np.arange(Ndistances)
+        timeIdxArray = np.arange(Ntimes)
+        for idxStart in fullIdxArray:
             thisDistanceStart = distanceArray[idxStart]
             thisTimeStart = timeArray[idxStart]
             
             # These booleans are required to check we don't assign again once a valid value has been found for each effort
-            hasFoundDistance = dict(zip(distancesNamesList, [False for i in range(Ndistances)] ))
-            hasFoundTime = dict(zip(timesNamesList, [False for i in range(Ntimes)] ))
+            hasFoundDistance = dict(zip(distancesNamesList, [False for i in distIdxArray] ))
+            hasFoundTime = dict(zip(timesNamesList, [False for i in timeIdxArray] ))
             # Then go through the rest of the data
-            for idxEnd in np.arange(idxStart, Nrows):
+            for idxEnd in fullIdxArray[idxStart:]:
                 thisDistanceEnd = distanceArray[idxEnd]
                 thisTimeEnd = timeArray[idxEnd]
                 
                 distDelta = thisDistanceEnd - thisDistanceStart
                 timeDelta = thisTimeEnd - thisTimeStart
                 # Distances
-                for iDist in np.arange(Ndistances):
+                for iDist in distIdxArray:
                     thisDistName = distancesNamesList[iDist]
                     thisDistValue = distancesValuesList[iDist]
                     if not(hasFoundDistance[thisDistName]) and distDelta >= thisDistValue:
@@ -372,7 +375,7 @@ class ActivityImporter:
                             bestEffortDistanceIndex[iDist, 1] = idxEnd
                         
                 # Times
-                for iDist in np.arange(Ntimes):
+                for iDist in timeIdxArray:
                     thisTimeName = timesNamesList[iDist]
                     thisTimeValue = timesValuesList[iDist]
                     if not(hasFoundTime[thisTimeName]) and timeDelta >= thisTimeValue:
@@ -387,7 +390,7 @@ class ActivityImporter:
         # Then convert to paces and timestamps
         bestEffortsMetrics = dict()
         # Distances
-        for iDist in np.arange(Ndistances):
+        for iDist in distIdxArray:
             thisDistName = distancesNamesList[iDist]
             thisDistValue = distancesValuesList[iDist]
             if not(bestTimePerDistance[thisDistName] == np.inf):
@@ -399,7 +402,7 @@ class ActivityImporter:
                 bestEffortsMetrics['distance_' + thisDistName + '_timeStamp'] = np.nan
                 bestEffortsMetrics['distance_' + thisDistName + '_pace'] = np.nan
         # Times
-        for iDist in np.arange(Ntimes):
+        for iDist in timeIdxArray:
             thisTimeName = timesNamesList[iDist]
             thisTimeValue = timesValuesList[iDist]
             if not(bestDistancePerTime[thisTimeName] == 0.0):
