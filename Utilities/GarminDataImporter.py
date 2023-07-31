@@ -19,6 +19,7 @@ import json
 import datetime
 from zipfile import ZipFile
 import os
+from tqdm import tqdm
 
 #%% StandardDataImporter class
 class StandardDataImporter:
@@ -42,8 +43,7 @@ class StandardDataImporter:
         NONactivityFiles = []
         NONrunningFiles = []
         NFitFiles = len(listActFitFiles)
-        Utils.printProgressBar(0, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
-        for i, ActFitFile in enumerate(listActFitFiles):
+        for i, ActFitFile in tqdm(enumerate(listActFitFiles), desc="fit files import", total=NFitFiles):
             thisImporter = ActivityImporter(ActFitFile, estimateBestEfforts=activityImporterOptions.get('estimateBestEfforts', True), importWeather=activityImporterOptions.get('importWeather', False))
             # Check the validity of the imported fit file
             if thisImporter.ObjInfo['DecodeSuccess'] and thisImporter.ObjInfo['isSportActivity']:
@@ -55,7 +55,6 @@ class StandardDataImporter:
                     NONrunningFiles.append(ActFitFile)
             else:
                 NONactivityFiles.append(ActFitFile)
-            Utils.printProgressBar(i + 1, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
         # Finally, go through the Imported Activities, get their metrics and create a table
         metricsList = []

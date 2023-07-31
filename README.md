@@ -7,4 +7,7 @@ More information can be found here: https://developer.garmin.com/fit/example-pro
 
 Once you cloned the project, you must add a text file containing the path to the folder containing your data. Add that file as ```Utilities/dataFolderPath.txt```
 
-This also requires the meteostat python module. Install using pip: ```pip install meteostat```  
+This also requires:
+
+- The meteostat python module. Install using pip: ```pip install meteostat```
+- The tqdm module for progress bar. Install using pip: ```pip install tqdm```
