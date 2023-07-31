@@ -28,7 +28,7 @@ class StandardDataImporter:
     """
     
     #%% Data Import Methods
-    def importActivityFiles(self, listActFitFiles):
+    def importActivityFiles(self, listActFitFiles, activityImporterOptions):
         """
         Imports the activity files and aggregates the metrics into a single table.
         listActFitFiles is given and contains the list of all fit files to consider
@@ -44,7 +44,7 @@ class StandardDataImporter:
         NFitFiles = len(listActFitFiles)
         Utils.printProgressBar(0, NFitFiles, prefix = 'Progress:', suffix = 'Complete', length = 50)
         for i, ActFitFile in enumerate(listActFitFiles):
-            thisImporter = ActivityImporter(ActFitFile)
+            thisImporter = ActivityImporter(ActFitFile, estimateBestEfforts=activityImporterOptions.get('estimateBestEfforts', True), importWeather=activityImporterOptions.get('importWeather', False))
             # Check the validity of the imported fit file
             if thisImporter.ObjInfo['DecodeSuccess'] and thisImporter.ObjInfo['isSportActivity']:
                 # This is valid activity, we keep all valid files but import only running activities
@@ -133,7 +133,7 @@ class GarminDataImporter(StandardDataImporter): # Inherits from StandardDataImpo
     This class imports data from all files contained within the folder of data provided by Garmin.
     """
     
-    def __init__(self, folderPath, importActivities=True):
+    def __init__(self, folderPath, importActivities=True, activityImporterOptions=dict()):
         """
         Constructor of the GarminDataImporter class
 
@@ -163,6 +163,7 @@ class GarminDataImporter(StandardDataImporter): # Inherits from StandardDataImpo
         self.importPersonalRecords()
         
         # Imports the activities if requested
+        self.activityImporterOptions = activityImporterOptions
         if importActivities:
             self.importActivityFiles()
         
@@ -305,7 +306,7 @@ class GarminDataImporter(StandardDataImporter): # Inherits from StandardDataImpo
         listActFitFiles = glob.glob(activityFolder + "\\*.fit")
 
         # Import the fit files using the parent class
-        (NONactivityFiles, NONrunningFiles) = super().importActivityFiles(listActFitFiles)
+        (NONactivityFiles, NONrunningFiles) = super().importActivityFiles(listActFitFiles, self.activityImporterOptions)
         
         # Stopped removing files that are not activity files. This should not be
         # an automatic process.
@@ -317,7 +318,7 @@ class WatchOffloadDataImporter(StandardDataImporter): # Inherits from StandardDa
     This class imports data from all files contained within the folder of data offloaded manually by the user.
     """
     
-    def __init__(self, folderPath, importActivities=True):
+    def __init__(self, folderPath, importActivities=True, activityImporterOptions=dict()):
         """
         Constructor of the WatchOffloadDataImporter class
 
@@ -338,6 +339,7 @@ class WatchOffloadDataImporter(StandardDataImporter): # Inherits from StandardDa
         self.rootFolder = folderPath
         
         # Imports the activities if requested
+        self.activityImporterOptions = activityImporterOptions
         if importActivities:
             self.importActivityFiles()
     
@@ -355,7 +357,7 @@ class WatchOffloadDataImporter(StandardDataImporter): # Inherits from StandardDa
         listActFitFiles = glob.glob(self.rootFolder + "\\*.fit")
 
         # Import the fit files using the parent class
-        (NONactivityFiles, NONrunningFiles) = super().importActivityFiles(listActFitFiles)
+        (NONactivityFiles, NONrunningFiles) = super().importActivityFiles(listActFitFiles, self.activityImporterOptions)
         
         # No need to delete or remove the fit files here because cleaning is done elsewhere
         # Might decide to add cleaning here as well, but wanted to keep cleaning separate so folders can be separate.        

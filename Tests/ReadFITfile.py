@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 filePath = Utils.getDataPath() + "\\11329404102_ACTIVITY.fit"
 print(filePath)
 
-actImp = ActivityImporter(filePath)
+actImp = ActivityImporter(filePath, importWeather=False)
 metrics = actImp.exportUsefulMetrics()
 
 # Plot the pace graph to check

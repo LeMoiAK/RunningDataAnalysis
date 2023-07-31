@@ -24,7 +24,7 @@ folderPath = Utils.getDataPath() + "\\2023_06_01_Complete"
 print(folderPath)
 
 #%% Try GarminDataImporter
-gdi = GarminDataImporter(folderPath, importActivities=True)
+gdi = GarminDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False) )
 
 #%% Plot Race Predictions
 gdi.df_RacePred['raceTime5K_Pace'].plot()

@@ -19,4 +19,4 @@ folderPath = Utils.getDataPath() + "\\WatchOffloadRaw"
 print(folderPath)
 
 #%% Try GarminDataImporter
-gdi = WatchOffloadDataImporter(folderPath, importActivities=True)
+gdi = WatchOffloadDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False) )
