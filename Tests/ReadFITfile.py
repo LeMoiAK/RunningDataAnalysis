@@ -12,7 +12,15 @@ import matplotlib.pyplot as plt
 filePath = Utils.getDataPath() + "\\11329404102_ACTIVITY.fit"
 print(filePath)
 
-actImp = ActivityImporter(filePath, importWeather=False)
+StravaHRzones = dict(
+    Zone_1_Endurance= [0, 129],
+    Zone_2_Moderate= [130, 161],
+    Zone_3_Tempo= [162, 177],
+    Zone_4_Threshold= [178, 195],
+    Zone_5_Anaerobic= [194, np.inf]
+    )
+
+actImp = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones)
 metrics = actImp.exportUsefulMetrics()
 
 # Plot the pace graph to check
@@ -42,3 +50,6 @@ plt.ylabel('Pace for that effort (min/km)')
 plt.gca().invert_yaxis()
 plt.grid()
 plt.show()
+
+#%% Test HR zones Reprocessing
+timeInHRzones = actImp.processTimeinHRzones(StravaHRzones)

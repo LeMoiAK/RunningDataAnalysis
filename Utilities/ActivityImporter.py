@@ -27,13 +27,16 @@ class ActivityImporter:
     It also contains functions to create advanced metrics.
     """
     
-    def __init__(self, filePath, estimateBestEfforts=True, importWeather=True):
+    def __init__(self, filePath, estimateBestEfforts=True, importWeather=True, customHRzones=dict()):
         """
         Contructor. Give path to the .fit file as input
         """
         
         # Declare Main variables so we know they exist
         self.ObjInfo = dict()
+        
+        # Store custom HR zones
+        self.customHRzones = customHRzones
         
         # Creates a stream and decoder object from the Garmin SDK to import data
         stream = Stream.from_file(filePath)
@@ -71,12 +74,19 @@ class ActivityImporter:
                     self.ObjInfo['hasBestEfforts'] = True
                 else:
                     self.ObjInfo['hasBestEfforts'] = False
-                    
+                
+                # Import Weather if requested
                 if importWeather:
                     self.importWeather()
                     self.ObjInfo['hasWeather'] = True
                 else:
                     self.ObjInfo['hasWeather'] = False
+                    
+                # Calculate time in custom HR zones
+                if customHRzones:
+                    self.processTimeinHRzones(customHRzones)
+                else:
+                    self.timeInCustomHRzones = dict() # Empty dict if no custom zones
                     
         else:
             self.ObjInfo['isSportActivity'] = False
@@ -288,6 +298,10 @@ class ActivityImporter:
         for iZone in np.arange(len(timeHRzones)):
             metricsExport['HR_Time_Zone_' + str(iZone)] = timeHRzones[iZone]
             metricsExport['HR_Ratio_Zone_' + str(iZone)] = timeHRzones[iZone] / totalTimeForHRzones * 100
+        # Hear Rate for CUSTOM ZONES
+        if self.timeInCustomHRzones:
+            for zoneName, zoneTime in self.timeInCustomHRzones.items():
+                metricsExport['HR_Custom_Time_' + zoneName] = zoneTime
         # Laps metrics
         metricsExport['Laps_Distance'] = ','.join(str(x) for x in self.lapsMetricsDF['total_distance'])
         metricsExport['Laps_Time'] = ','.join(str(x) for x in self.lapsMetricsDF['total_timer_time'])
@@ -481,6 +495,30 @@ class ActivityImporter:
         self.bestEffortData['Time_Distances'] = bestDistancePerTime # This is now an array
         self.bestEffortData['Time_Times'] = timesValuesList
         self.bestEffortData['Time_Paces'] = Utils.speedToPace(bestDistancePerTime/timesValuesList)
+    
+    def processTimeinHRzones(self, HRzones):
+        """
+        Function to re-process an activity with manually given Heart Rate zones.
+        This can be required because different apps can have different HR zones.
+        
+        HRzones is a dictionnary containing the HR zones. The key is the name
+        of that zone, the value is the interval of that zone.
+        This function returns a dictionnary with the same keys but the values
+        are the time spent in each zone in second.
+        """
+        
+        df = self.data
+        timeInHRzones = dict()
+        for zoneName, zoneBnds in HRzones.items():
+            yHR = df['heart_rate'].copy()
+            idxFilter = (zoneBnds[0] <= yHR) & (yHR <= zoneBnds[1])
+            yHR[idxFilter] = 1.0
+            yHR[~idxFilter] = 0.0            
+            timeInHRzones[zoneName] = np.trapz(x=df['time'], y=yHR)            
+        
+        # Store the results
+        self.timeInCustomHRzones = timeInHRzones
+        
     
     #%% Data augmentation functions
     def importWeather(self):

@@ -22,7 +22,16 @@ import seaborn as sns
 #%% Import the run data to get the HR metrics
 folderPath = Utils.getDataPath() + "\\WatchOffloadRaw"
 print(folderPath)
-gdi = WatchOffloadDataImporter(folderPath, importActivities=True)
+
+StravaHRzones = dict(
+    Zone_1_Endurance= [0, 129],
+    Zone_2_Moderate= [130, 161],
+    Zone_3_Tempo= [162, 177],
+    Zone_4_Threshold= [178, 195],
+    Zone_5_Anaerobic= [194, np.inf]
+    )
+
+gdi = WatchOffloadDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(estimateBestEfforts=False, importWeather=False, customHRzones=StravaHRzones) )
 # Then get the metrics from these runs
 metricsDF = gdi.activityMetricsDF
 
@@ -100,3 +109,43 @@ conf_int = pd.DataFrame({'lower': coefs - gap, 'upper': coefs + gap}, index=X_au
 # This is surprising because we expect the formula to be rather simple and just a
 # linear combination of times in each zone. A possible explanation is that zones 
 # are defined differently for Garmin and Strava. This is the next path of investigation.
+
+#%% ---------------- RE-PROCESSING HR ZONES ----------------
+# After some investigation; it turns out that Strave HR zones are very different
+# from Garmin HR zones, and there is even a different number of zones.
+# That means the Garmin generated metrics are relatively useless and might explain
+# why the above linear regression did not work well.
+
+#%% Merge Metrics table together
+metricsDF_light_Custom = metricsDF[['Metric_StartTime', 'Metric_TotalTimerTime', 'Metric_TotalDistance',
+                                    'HR_Custom_Time_Zone_1_Endurance','HR_Custom_Time_Zone_2_Moderate',
+                                    'HR_Custom_Time_Zone_3_Tempo','HR_Custom_Time_Zone_4_Threshold',
+                                    'HR_Custom_Time_Zone_5_Anaerobic' ]]
+
+fullDF_Custom = pd.merge(metricsDF_light_Custom, stravaDF_light, on='Metric_StartTime', how='inner')
+
+X = fullDF_Custom[['HR_Custom_Time_Zone_1_Endurance','HR_Custom_Time_Zone_2_Moderate',
+                   'HR_Custom_Time_Zone_3_Tempo','HR_Custom_Time_Zone_4_Threshold',
+                   'HR_Custom_Time_Zone_5_Anaerobic']]
+y = fullDF_Custom['Relative Effort']
+
+# Split data into test and train
+# Not so great to have only 173 data points
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=101)
+
+# Train the model
+from sklearn.linear_model import LinearRegression
+lmCustom = LinearRegression()
+lmCustom.fit(X_train, y_train)
+
+# Evaluate quality of model
+coeff_df = pd.DataFrame(lmCustom.coef_, X.columns, columns=['Coefficient'])
+y_pred = lmCustom.predict(X_test)
+from sklearn import metrics
+print('MAE:', metrics.mean_absolute_error(y_test, y_pred))
+print('MSE:', metrics.mean_squared_error(y_test, y_pred))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+
+yDF = pd.DataFrame(dict(trueValue=y_test, prediction=y_pred))
+sns.scatterplot(data=yDF, x='trueValue', y='prediction')
