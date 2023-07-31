@@ -31,8 +31,7 @@ df5km = actImp.extractBestEffortTimeSeries('12mins')
 #%% Create Graph of best pace vs time
 x = np.array(actImp.bestEffortData['Time_Times'])
 y = np.array(actImp.bestEffortData['Time_Paces'])
-y[y > datetime.datetime(1970, 1, 1, 00, 30, 00)] = np.nan
-idxFilter = np.array(actImp.bestEffortData['Time_Paces']) < datetime.datetime(1970, 1, 1, 1, 00, 00)
+idxFilter = np.array(actImp.bestEffortData['Time_Paces']) < np.datetime64('1970-01-01 00:30:00')
 x = x[idxFilter]
 y = y[idxFilter]
 

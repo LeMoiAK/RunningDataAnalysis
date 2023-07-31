@@ -90,8 +90,8 @@ class StandardDataImporter:
 
         for i in np.arange(Nactivities):
             thisActIdx = idxActivities[i]
-            bestDistancePerTime[i, :] = np.array(list(self.activityImporters[thisActIdx].bestEffortData['Time_Distances'].values()))
-            bestPacePerTime[i, :] = np.array(self.activityImporters[thisActIdx].bestEffortData['Time_Paces'], dtype='datetime64')
+            bestDistancePerTime[i, :] = self.activityImporters[thisActIdx].bestEffortData['Time_Distances']
+            bestPacePerTime[i, :] = self.activityImporters[thisActIdx].bestEffortData['Time_Paces']
             
         # Then get the best pace among all the activities and return it
         bestDistancePerTimeAllActivities = bestDistancePerTime.max(axis=0)
@@ -118,8 +118,8 @@ class StandardDataImporter:
 
         for i in np.arange(Nactivities):
             thisActIdx = idxActivities[i]
-            bestTimePerDistance[i, :] = np.array(list(self.activityImporters[thisActIdx].bestEffortData['Distance_Times'].values()))
-            bestPacePerDistance[i, :] = np.array(self.activityImporters[thisActIdx].bestEffortData['Distance_Paces'], dtype='datetime64')
+            bestTimePerDistance[i, :] = self.activityImporters[thisActIdx].bestEffortData['Distance_Times']
+            bestPacePerDistance[i, :] = self.activityImporters[thisActIdx].bestEffortData['Distance_Paces']
             
         # Then get the best pace among all the activities and return it
         bestTimePerDistanceAllActivities = bestTimePerDistance.max(axis=0)
