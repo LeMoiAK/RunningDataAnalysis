@@ -13,7 +13,7 @@ import Utilities.Functions as Utils
 from Utilities.ActivityImporter import ActivityImporter
 from Utilities.ActivityPlotter import ActivityPlotter as actp
 
-# Necessqry just for plotting
+# Necessary just for plotting
 import plotly.express as px
 import plotly.io as pio
 pio.renderers.default= 'browser' # Set to render plots in a browser
