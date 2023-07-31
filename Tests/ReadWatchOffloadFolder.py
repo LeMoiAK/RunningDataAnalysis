@@ -29,3 +29,27 @@ StravaHRzones = dict(
     )
 
 gdi = WatchOffloadDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False, customHRzones=StravaHRzones) )
+
+#%% Create Heat Map of training pace and Heart Rate
+# Get Total DataFrame
+dfTotal = gdi.exportAllActivitiesData()
+# Filter to normal paces under 8mins/km
+dfTotal = dfTotal[dfTotal['pace'] < np.datetime64('1970-01-01 00:08:00')]
+
+#%% Create a density plot
+import plotly.express as px
+import pandas as pd
+
+#%%
+# Need to resolve the issue that some samples are longer times than others
+contourPlot = px.density_contour(
+    data_frame= dfTotal,
+    x= 'heart_rate',
+    y= 'pace',
+    marginal_x= 'histogram',
+    marginal_y= 'histogram',
+    histnorm='probability',
+    range_y= (dfTotal['pace'].max(), dfTotal['pace'].min()),
+    title= 'Heart Rate and Pace distribution during training'
+    )
+contourPlot.show()

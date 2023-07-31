@@ -126,6 +126,20 @@ class StandardDataImporter:
         bestPacePerDistanceAllActivities = bestPacePerDistance.min(axis=0)
         
         return (distancesNamesList, distancesValuesArray, bestTimePerDistanceAllActivities, bestPacePerDistanceAllActivities)
+    
+    def exportAllActivitiesData(self):
+        """
+        Exports the data from all activities into a single data frame. Can be used
+        for compound analysis and graphs.
+        """
+        # Save the list of importers and their respective file paths
+        dfList = [thisActivity.data.copy() for thisActivity in self.activityImporters]
+        for idx, df in enumerate(dfList):
+            df['FilePath'] = self.activityFiles[idx]
+        
+        # Finally return the concatenated DataFrame
+        return pd.concat(dfList, axis=0)
+        
 
 #%% GarminDataImporter class
 class GarminDataImporter(StandardDataImporter): # Inherits from StandardDataImporter
