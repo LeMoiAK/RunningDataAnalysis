@@ -16,11 +16,12 @@ import numpy as np
 import time
 
 #%% Imports a fit file to just get the datafamre
-filePath = Utils.getDataPath() + "\\11566503738_ACTIVITY.fit"
+filePath = Utils.getDataPath() + "\\11329404102_ACTIVITY.fit"
 print(filePath)
 
 # Read the FIT file into a DataFrame
 df = ActivityImporter.loadDataFromFitFile(filePath)
+thisActivity = ActivityImporter(filePath, estimateBestEfforts=False, importWeather=False)
 
 # Do some conversions that might be useful
 df['speed_kph'] = df['speed'] * 3.6
@@ -135,7 +136,7 @@ def slidingSearch(df, distanceToGet):
 
     
 #%% Test and time both functions
-Ntest = 50;
+Ntest = 1;
 
 # Original function
 time_Original = np.ones_like(np.nan, shape=(Ntest,1))
@@ -154,3 +155,32 @@ for i in np.arange(Ntest):
 print("SLIDING Execution time " + str(time_Sliding.mean()*1e6) + "us")
 print("Time difference between best found " + str( (bestTimePerDistance_Original-bestTimePerDistance_Sliding)*1e6 ) + "us")
 print("Improvement: " + str( time_Original.mean()/time_Sliding.mean() ) + " times better"  )
+
+#%% Test and time both methdos from the Activity importer
+Ntest = 1;
+
+# Original function
+time_Original = np.ones_like(np.nan, shape=(Ntest,1))
+for i in np.arange(Ntest):
+    tStart = time.time()
+    thisActivity.getBestEfforts()
+    time_Original[i] = time.time() - tStart
+print("ORIGINAL Method Execution time " + str(time_Original.mean()*1e3) + "ms")
+
+bestEffortsMetrics_Original = thisActivity.bestEffortsMetrics
+
+#%% Sliding function
+time_Sliding = np.ones_like(np.nan, shape=(Ntest,1))
+for i in np.arange(Ntest):
+    tStart = time.time()
+    thisActivity.getBestEffortsV2()
+    time_Sliding[i] = time.time() - tStart
+print("SLIDING Method Execution time " + str(time_Sliding.mean()*1e3) + "ms")
+print("Improvement: " + str( time_Original.mean()/time_Sliding.mean() ) + " times better"  )
+
+bestEffortsMetrics_Sliding = thisActivity.bestEffortsMetrics
+
+# Compare results
+dfOriginal = pd.DataFrame(bestEffortsMetrics_Original, index=['Original'])
+dfSliding = pd.DataFrame(bestEffortsMetrics_Sliding, index=['Sliding'])
+dfTotal = pd.concat([dfOriginal, dfSliding])

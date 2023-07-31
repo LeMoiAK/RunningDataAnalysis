@@ -426,6 +426,176 @@ class ActivityImporter:
         self.bestEffortData['Time_Distances'] = bestDistancePerTime
         self.bestEffortData['Time_Times'] = timesValuesList
         self.bestEffortData['Time_Paces'] = [Utils.speedToPace(runDist/runTime) for (runDist, runTime) in zip(bestDistancePerTime.values(), timesValuesList)]
+        
+    def getBestEffortsV2(self):
+        """
+        Obtains the best efforts for each distance and time scale in the data.
+        
+        This is a second version of the algorithm which uses a sliding window
+        rather than checking all combinations of points.
+        It is significantly faster.
+        """
+        
+        # Get data
+        df = self.data
+        Nrows = len(df)
+        
+        # Initialise the distance related best efforts
+        distancesNamesList =           ['400m', '500m', '800m', '1km',            '1mile', '5km', '10km', '15km',             '10miles',             'HalfMarathon',             'FullMarathon']
+        distancesValuesList = np.array([ 400.0,  500.0,  800.0, 1.0e3, Utils.mileDistance, 5.0e3, 10.0e3, 15.0e3, 10*Utils.mileDistance, Utils.halfMarathonDistance, Utils.fullMarathonDistance])
+        Ndistances = len(distancesNamesList)
+        bestTimePerDistance = np.inf * np.ones(Ndistances) # Initialised to np.inf because we want to minimise it
+        bestEffortDistanceIndex = np.ones((Ndistances,2)) * np.nan # First column for start, second for finish index
+
+        # Initialise the time related best efforts
+        timesNamesList =           ['30s', '1mins', '2mins', '5mins', '10mins', '12mins', '20mins', '30mins', '45mins', '60mins', '75mins', '90mins', '105mins', '120mins']
+        timesValuesList = np.array([ 30.0,  1*60.0,  2*60.0,  5*60.0,  10*60.0,  12*60.0,  20*60.0,  30*60.0,  45*60.0,  60*60.0,  75*60.0,  90*60.0,  105*60.0,  120*60.0])
+        Ntimes = len(timesNamesList)
+        bestDistancePerTime = np.zeros(Ntimes) # Initialised to 0.0 because we want to maximise it
+        bestEffortTimeIndex = np.ones((Ntimes,2)) * np.nan # First column for start, second for finish index
+
+        # Get nice names for the channels to look at
+        distanceArray = df['distance'].values
+        timeArray = df['time'].values
+        # Get total time and distance to filter out efforts we can't estimate
+        distanceTotal = distanceArray[-1] - distanceArray[0]
+        timeTotal = timeArray[-1] - timeArray[0]
+        
+        # -------- DISTANCE EFFORTS --------
+        # Run the algorithm once for each distance
+        for iDist, thisDistanceName in enumerate(distancesNamesList):
+            thisDistanceValue = distancesValuesList[iDist]
+            
+            # First check the activity is long enough
+            # If not we can skip this process entirely and gain some time
+            if thisDistanceValue > distanceTotal:
+                # Distance not available, default values for results are ok so skip
+                continue
+            
+            # This distance has been travelled so effort estimation is possible
+            # Init the indices
+            idxStart = 0
+            idxEnd = 1
+            
+            # Find the first end index that contains the distance
+            distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+            timeDelta = timeArray[idxEnd] - timeArray[idxStart]        
+            while idxEnd <= (Nrows-2) and distDelta < thisDistanceValue:
+                idxEnd += 1
+                distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+                timeDelta = timeArray[idxEnd] - timeArray[idxStart]        
+            # This is the initial best guess
+            bestTimePerDistance[iDist] = timeDelta
+            bestEffortDistanceIndex[iDist, 0] = idxStart
+            bestEffortDistanceIndex[iDist, 1] = idxEnd
+            
+            # Then we slide the window progressively to find better times potentially
+            while idxEnd <= (Nrows-2):
+                idxEnd += 1
+                # Check the new array with a new point at the end
+                distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+                timeDelta = timeArray[idxEnd] - timeArray[idxStart]        
+                # Check if we can remove the start index
+                distDeltaStartRemoved = distDelta
+                while distDeltaStartRemoved >= thisDistanceValue:
+                    idxStart += 1
+                    distDeltaStartRemoved = distanceArray[idxEnd] - distanceArray[idxStart]
+                # When we come out of this loop; that means we went one point too far
+                idxStart -= 1
+                # Check if the new array has a better time than the current best
+                distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+                timeDelta = timeArray[idxEnd] - timeArray[idxStart]
+                if timeDelta < bestTimePerDistance[iDist]:
+                    bestTimePerDistance[iDist] = timeDelta
+                    bestEffortDistanceIndex[iDist, 0] = idxStart
+                    bestEffortDistanceIndex[iDist, 1] = idxEnd
+                
+        # -------- TIME EFFORTS --------
+        # Run the algorithm once for each time
+        for iTime, thisTimeName in enumerate(timesNamesList):
+            thisTimeValue = timesValuesList[iTime]
+            
+            # First check the activity is long enough
+            # If not we can skip this process entirely and gain some time
+            if thisTimeValue > timeTotal:
+                # Time not available, default values for results are ok so skip
+                continue
+            
+            # This Time has been travelled so effort estimation is possible
+            # Init the indices
+            idxStart = 0
+            idxEnd = 1
+            
+            # Find the first end index that contains the time
+            distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+            timeDelta = timeArray[idxEnd] - timeArray[idxStart]        
+            while idxEnd <= (Nrows-2) and timeDelta < thisTimeValue:
+                idxEnd += 1
+                distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+                timeDelta = timeArray[idxEnd] - timeArray[idxStart]        
+            # This is the initial best guess
+            bestDistancePerTime[iTime] = distDelta
+            bestEffortTimeIndex[iTime, 0] = idxStart
+            bestEffortTimeIndex[iTime, 1] = idxEnd
+            
+            # Then we slide the window progressively to find better times potentially
+            while idxEnd <= (Nrows-2):
+                idxEnd += 1
+                # Check the new array with a new point at the end
+                distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+                timeDelta = timeArray[idxEnd] - timeArray[idxStart]
+                # Check if we can remove the start index
+                timeDeltaStartRemoved = timeDelta
+                while timeDeltaStartRemoved >= thisTimeValue:
+                    idxStart += 1
+                    timeDeltaStartRemoved = timeArray[idxEnd] - timeArray[idxStart]
+                # When we come out of this loop; that means we went one point too far
+                idxStart -= 1
+                # Check if the new array has a better distance than the current best
+                distDelta = distanceArray[idxEnd] - distanceArray[idxStart]
+                timeDelta = timeArray[idxEnd] - timeArray[idxStart]
+                if distDelta > bestDistancePerTime[iTime]:
+                    bestDistancePerTime[iTime] = distDelta
+                    bestEffortTimeIndex[iTime, 0] = idxStart
+                    bestEffortTimeIndex[iTime, 1] = idxEnd
+
+        # -------- POST-PROCESSING --------
+        bestEffortsMetrics = dict()
+        # Distances
+        for iDist, thisDistName in enumerate(distancesNamesList):
+            thisDistValue = distancesValuesList[iDist]
+            if not(bestTimePerDistance[iDist] == np.inf):
+                bestEffortsMetrics['distance_' + thisDistName + '_time'] = bestTimePerDistance[iDist]
+                bestEffortsMetrics['distance_' + thisDistName + '_timeStamp'] = pd.Timestamp(bestTimePerDistance[iDist], unit='s')
+                bestEffortsMetrics['distance_' + thisDistName + '_pace'] = Utils.speedToPace(thisDistValue / bestTimePerDistance[iDist])
+            else:
+                bestEffortsMetrics['distance_' + thisDistName + '_time'] = np.nan
+                bestEffortsMetrics['distance_' + thisDistName + '_timeStamp'] = np.nan
+                bestEffortsMetrics['distance_' + thisDistName + '_pace'] = np.nan
+        # Times
+        for iTime, thisTimeName in enumerate(timesNamesList):
+            thisTimeValue = timesValuesList[iTime]
+            if not(bestDistancePerTime[iTime] == 0.0):
+                bestEffortsMetrics['time_' + thisTimeName + '_distance'] = bestDistancePerTime[iTime]
+                bestEffortsMetrics['time_' + thisTimeName + '_pace'] = Utils.speedToPace(bestDistancePerTime[iTime] / thisTimeValue)
+            else:
+                bestEffortsMetrics['time_' + thisTimeName + '_distance'] = np.nan
+                bestEffortsMetrics['time_' + thisTimeName + '_pace'] = np.nan
+
+        # Finally save metrics to class
+        self.bestEffortsMetrics = bestEffortsMetrics
+        # And save indexes because they'll be useful in the extractBestEffort function
+        self.bestEffortData = dict()
+        self.bestEffortData['Distance_index'] = bestEffortDistanceIndex
+        self.bestEffortData['Distance_Names'] = distancesNamesList
+        self.bestEffortData['Distance_Distances'] = distancesValuesList
+        self.bestEffortData['Distance_Times'] = bestTimePerDistance # This is now an array
+        self.bestEffortData['Distance_Paces'] = Utils.speedToPace(distancesValuesList/bestTimePerDistance)
+        self.bestEffortData['Time_index'] = bestEffortTimeIndex
+        self.bestEffortData['Time_Names'] = timesNamesList
+        self.bestEffortData['Time_Distances'] = bestDistancePerTime # This is now an array
+        self.bestEffortData['Time_Times'] = timesValuesList
+        self.bestEffortData['Time_Paces'] = Utils.speedToPace(bestDistancePerTime/timesValuesList)
     
     #%% Data augmentation functions
     def importWeather(self):
