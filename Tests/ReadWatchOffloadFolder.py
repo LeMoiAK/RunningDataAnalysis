@@ -16,7 +16,7 @@ from Utilities.ActivityPlotter import ActivityPlotter as actp
 import Utilities.Functions as Utils
 import numpy as np
 
-folderPath = Utils.getDataPath() + "\\WatchOffloadRaw"
+folderPath = Utils.getDataPath() + "\\WatchOffloadClean"
 print(folderPath)
 
 #%% Try GarminDataImporter

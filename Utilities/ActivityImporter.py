@@ -53,7 +53,9 @@ class ActivityImporter:
         
         # Check if we indeed have an activity then get metrics if yes
         if 'activity_mesgs' in messages.keys() and 'record_mesgs' in messages.keys() \
-            and 'event_mesgs' in messages.keys() and 'sport_mesgs' in messages.keys():
+            and 'event_mesgs' in messages.keys() and 'sport_mesgs' in messages.keys() \
+            and 'session_mesgs' in messages.keys():
+            
             self.ObjInfo['isSportActivity'] = True
             self.ObjInfo['sport'] = messages['sport_mesgs'][0]['sport']
             
@@ -602,3 +604,46 @@ class ActivityImporter:
         else:
             print(f"No record messages in {filePath}")
             return -1
+        
+    @staticmethod
+    def getFitFileInfo(filePath):
+        """
+        Function to obtain rudimentary information about a file like starting date
+        type of activity and sport.
+        """
+        
+        # Creates a stream and decoder object from the Garmin SDK to import data
+        stream = Stream.from_file(filePath)
+        decoder = Decoder(stream)
+        # Then does the decoding
+        messages, errors = decoder.read()
+        
+        # Checks for errors
+        if len(errors) > 0:
+            print(f"Could not decode {filePath}: {errors}")
+            return -1
+        
+        # Get the file info
+        # Check if we indeed have an activity then get metrics if yes
+        if 'activity_mesgs' in messages.keys() and 'record_mesgs' in messages.keys() \
+            and 'event_mesgs' in messages.keys() and 'sport_mesgs' in messages.keys() \
+            and 'session_mesgs' in messages.keys():
+                
+            isActivity = True
+            thisSport = messages['sport_mesgs'][0]['sport']
+            
+            # Filter per sport - not designed to work with multisport
+            if 'running' in thisSport:
+                # Get the start time of the session. Different to file creation date
+                sessionMetrics = Utils.removeNumberKeysFromDict(messages['session_mesgs'][0])
+                startTime = sessionMetrics['start_time']
+            else:
+                startTime = datetime.datetime.now()                
+        else:
+            isActivity = False
+            thisSport = ''
+            startTime = datetime.datetime.now()
+            
+        return (isActivity, thisSport, startTime)
+                
+        

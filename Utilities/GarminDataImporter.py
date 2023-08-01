@@ -10,15 +10,20 @@ Created on Sat Jun 17 23:18:42 2023
 """
 
 #%% Required modules
+# For own analysis and functions
 from Utilities.ActivityImporter import ActivityImporter
 import Utilities.Functions as Utils
+# Standard libs
 import pandas as pd
 import numpy as np
+import datetime
+# To deal with files
 import glob
 import json
-import datetime
 from zipfile import ZipFile
 import os
+import shutil
+# Misc
 from tqdm import tqdm
 
 #%% StandardDataImporter class
@@ -139,6 +144,40 @@ class StandardDataImporter:
         
         # Finally return the concatenated DataFrame
         return pd.concat(dfList, axis=0)
+        
+    
+    #%% Data and folder cleaning static methods
+    @staticmethod
+    def filterToRunOnlyAndRenameFitFiles(sourceFolder, destinationFolder):
+        """
+        Function that will go through all the .fit files found in a folder,
+        read each of them, filter only to the run activities, then copy them to
+        the destination folder with a better name.
+        
+        Returns the list of renamed files in the destination folder.
+        """
+        
+        # Obtain the list of files in the source folder
+        listActFitFiles = glob.glob(sourceFolder + "\\*.fit")
+        NFitFiles = len(listActFitFiles)
+        
+        # Create the destination folder if does not exist
+        if not os.path.exists(destinationFolder):
+           os.makedirs(destinationFolder)
+        
+        # Go through the list
+        renamedAndFilteredFiles = []
+        for ActFitFile in tqdm(listActFitFiles, desc="Processing Source Folder", total=NFitFiles):
+            # Get info on File
+            (isActivity, thisSport, startTime) = ActivityImporter.getFitFileInfo(ActFitFile)
+            if isActivity and 'running' in thisSport:
+                # This is a valid activity, get new file name
+                newFileName = destinationFolder + '\\' + startTime.strftime("%Y_%m_%d-%H_%M_%S") + '_' + thisSport + '.fit'
+                renamedAndFilteredFiles.append(newFileName)
+                # Copy that file
+                shutil.copy2(ActFitFile, newFileName)
+        # Finally returns the list of files that have been filtered and copied
+        return renamedAndFilteredFiles
         
 
 #%% GarminDataImporter class
