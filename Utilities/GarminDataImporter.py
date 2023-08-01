@@ -170,7 +170,7 @@ class StandardDataImporter:
         for ActFitFile in tqdm(listActFitFiles, desc="Processing Source Folder", total=NFitFiles):
             # Get info on File
             (isActivity, thisSport, startTime) = ActivityImporter.getFitFileInfo(ActFitFile)
-            if isActivity and 'running' in thisSport:
+            if isActivity:
                 # This is a valid activity, get new file name
                 newFileName = destinationFolder + '\\' + startTime.strftime("%Y_%m_%d-%H_%M_%S") + '_' + thisSport + '.fit'
                 renamedAndFilteredFiles.append(newFileName)

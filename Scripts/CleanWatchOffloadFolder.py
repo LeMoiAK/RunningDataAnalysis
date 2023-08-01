@@ -18,9 +18,13 @@ import Utilities.Functions as Utils
 # - Activities offloaded manually from the watch
 sourceFolder = Utils.getDataPath() + "\\WatchOffloadRaw"
 destinationFolder = Utils.getDataPath() + "\\WatchOffloadClean"
-# - To get activities that have not been offloaded from the watch in the past
-# sourceFolder = Utils.getDataPath() + "\\2023_06_01_Complete\\DI_CONNECT\\DI-Connect-Uploaded-Files"
-# destinationFolder = Utils.getDataPath() + "\\GarminFolderClean"
 
 renamedAndFilteredFiles = StandardDataImporter.filterToRunOnlyAndRenameFitFiles(sourceFolder, destinationFolder)
 print('\n' + str(len(renamedAndFilteredFiles)) + " files have been filtered and copied to the destination folder")
+
+#%% Run the Garmin Data Folder
+# - To get activities that have not been offloaded from the watch in the past
+# sourceFolder = Utils.getDataPath() + "\\2023_06_01_Complete\\DI_CONNECT\\DI-Connect-Uploaded-Files"
+# destinationFolder = Utils.getDataPath() + "\\GarminFolderClean"
+# renamedAndFilteredFiles = StandardDataImporter.filterToRunOnlyAndRenameFitFiles(sourceFolder, destinationFolder)
+# print('\n' + str(len(renamedAndFilteredFiles)) + " files have been filtered and copied to the destination folder")

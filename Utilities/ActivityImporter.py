@@ -632,17 +632,22 @@ class ActivityImporter:
             isActivity = True
             thisSport = messages['sport_mesgs'][0]['sport']
             
-            # Filter per sport - not designed to work with multisport
-            if 'running' in thisSport:
-                # Get the start time of the session. Different to file creation date
-                sessionMetrics = Utils.removeNumberKeysFromDict(messages['session_mesgs'][0])
-                startTime = sessionMetrics['start_time']
-            else:
-                startTime = datetime.datetime.now()                
+            # Try to get start time
+            try:
+              # Get the start time of the session. Different to file creation date
+              sessionMetrics = Utils.removeNumberKeysFromDict(messages['session_mesgs'][0])
+              startTime = sessionMetrics['start_time']
+            except:
+                # Else try to get activity file creation date
+                try:
+                    fileInfo = Utils.removeNumberKeysFromDict(messages['file_id_mesgs'][0])
+                    startTime = fileInfo['time_created']
+                except:
+                    startTime = datetime.datetime(1970, 1, 1)
         else:
             isActivity = False
             thisSport = ''
-            startTime = datetime.datetime.now()
+            startTime = datetime.datetime(1970, 1, 1)
             
         return (isActivity, thisSport, startTime)
                 
