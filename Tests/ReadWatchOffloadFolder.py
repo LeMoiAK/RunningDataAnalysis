@@ -42,14 +42,15 @@ import pandas as pd
 
 #%%
 # Need to resolve the issue that some samples are longer times than others
-contourPlot = px.density_contour(
+# The Plotly express version has lots of issues with filled contours as soon
+# as some options like marginal_x or trendline are used
+fig = px.density_contour(
     data_frame= dfTotal,
     x= 'heart_rate',
     y= 'pace',
-    marginal_x= 'histogram',
-    marginal_y= 'histogram',
     histnorm='probability',
     range_y= (dfTotal['pace'].max(), dfTotal['pace'].min()),
     title= 'Heart Rate and Pace distribution during training'
     )
-contourPlot.show()
+fig.update_traces(contours_coloring='fill', colorscale='jet')
+fig.show()
