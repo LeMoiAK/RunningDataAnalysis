@@ -59,9 +59,21 @@ fig.show()
 metricsDF = gdi.activityMetricsDF
 
 # Graphing libraries
-import plotly.graph_objects as go
 import plotly.io as pio
 #pio.renderers.default = 'svg'
 pio.renderers.default= 'browser' # Set to render plots in a browser
 
 actp.plotDistributionHRzones(metricsDF, StravaHRzones, "HR_Custom_Time_")
+
+# Same but with Garmin zones
+GarminHRzones = dict(
+    Zone_0= [0, 99],
+    Zone_1= [100, 118],
+    Zone_2= [119, 138],
+    Zone_3= [139, 158],
+    Zone_4= [159, 178],
+    Zone_5= [179, 198],
+    Zone_6= [199, np.inf]
+    )
+
+actp.plotDistributionHRzones(metricsDF, GarminHRzones, "HR_Time_")

@@ -67,6 +67,23 @@ metricsDF = gdi.activityMetricsDF
 # Then create the plot
 actp.plotDistributionHRzones(metricsDF, StravaHRzones, "HR_Custom_Time_")
 
+# Same but with Garmin zones already computed in the metrics.
+# That means the bounds used to calculate the time spent in each zone as saved
+# in the file may not correspond with the zones indicated below. The definition
+# of the zones has evolved over time.
+GarminHRzones = dict(
+    Zone_0= [0, 99],
+    Zone_1= [100, 118],
+    Zone_2= [119, 138],
+    Zone_3= [139, 158],
+    Zone_4= [159, 178],
+    Zone_5= [179, 198],
+    Zone_6= [199, np.inf]
+    )
+
+actp.plotDistributionHRzones(metricsDF, GarminHRzones, "HR_Time_")
+
 # -------------------------------------------------------------------------------------------------------
 #%% More graphs and analyses incoming
 # For instance related to HR
+
