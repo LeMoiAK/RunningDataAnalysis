@@ -24,7 +24,7 @@ StravaHRzones = dict(
     Zone_1_Endurance= [0, 129],
     Zone_2_Moderate= [130, 161],
     Zone_3_Tempo= [162, 177],
-    Zone_4_Threshold= [178, 195],
+    Zone_4_Threshold= [178, 193],
     Zone_5_Anaerobic= [194, np.inf]
     )
 
