@@ -302,3 +302,56 @@ class ActivityPlotter:
         fig.update_layout(title= "Evolution of Best Pace per Distance for periods of 90 days", font_size=20)
         fig.update_xaxes(title_text= "Distance (km)")
         fig.show()
+        
+    @staticmethod
+    def plotDistributionHRzones(metricsDF, HRzonesDict, prefixInMetric):
+        """
+        Plots a distribution of the time spent in each HR zone for each month.
+        It takes as argument the DataFrame of metrics, the dictionary defining
+        the HR zones, as well as their prefix in the metrics column names.
+        """
+        
+        # Create list of column names for HR zones
+        HRzoneNames = list(HRzonesDict.keys())
+        HRcolumnNames = [prefixInMetric + zoneName for zoneName in HRzoneNames]
+        # Get total per zone for each year-month
+        sumTimePerMonth = metricsDF.groupby(metricsDF['Metric_StartTime'].dt.strftime("%Y-%m"))[HRcolumnNames].sum()
+        # Create Sum of time in each zone to get ratios
+        sumTimePerMonth['Total'] = sumTimePerMonth[HRcolumnNames].sum(axis=1)
+        
+        # The create the trace for each zone
+        tracesList = []
+        for idx, thisCol in enumerate(HRcolumnNames):
+            thisHRzoneName = HRzoneNames[idx]
+            thisLegendName = thisHRzoneName.replace('_', ' ') + ": " + \
+                                str(HRzonesDict[thisHRzoneName][0]) + "bpm to " + str(HRzonesDict[thisHRzoneName][1]) + "bpm"
+            tracesList.append(
+                    go.Bar(
+                        x= sumTimePerMonth.index,
+                        y= sumTimePerMonth[thisCol] / sumTimePerMonth['Total']*100.0,
+                        name= thisLegendName,
+                        legendgroup= HRcolumnNames[idx],
+                        showlegend= True,
+                        yaxis= "y"
+                        )
+                )
+        # Create the Layout
+        layout = go.Layout(
+            legend=dict(
+                orientation="h",
+                yanchor= "bottom",
+                y= 1.02,
+                xanchor= "right",
+                x= 1,
+                font_size= 13
+            ),
+            yaxis=dict(
+                domain=[0.00, 1.00],
+                title= "Percent of Time Spent in each Zone (%)"
+            )
+        )
+        # Finally create the figure
+        fig = go.Figure(data= tracesList, layout= layout)
+        fig.update_layout(title= "Distribution of time spent in each Heart Rate zone", font_size=20, barmode='stack', xaxis_tickangle=-45)
+        fig.update_xaxes(title_text= "Month Year")
+        fig.show()

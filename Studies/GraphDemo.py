@@ -14,6 +14,8 @@ import Utilities.Functions as Utils
 from Utilities.GarminDataImporter import GarminDataImporter,WatchOffloadDataImporter # To read entire folders
 from Utilities.ActivityImporter import ActivityImporter # To read a single activity
 from Utilities.ActivityPlotter import ActivityPlotter as actp # To create standard plots
+# Standard libraries
+import numpy as np
 
 # -------------------------------------------------------------------------------------------------------
 #%% COMPARE MULTIPLE SIMILAR ACTIVITIES
@@ -38,8 +40,17 @@ actp.effortComparePlot(df5kmList, namesList, graphTitle="Comparison of two best 
 # Import the data from the Watch Offload folder
 # Could be done with the Garmin folder as well
 
+# These HR zones are required for later use
+StravaHRzones = dict(
+    Zone_1_Endurance= [0, 129],
+    Zone_2_Moderate= [130, 161],
+    Zone_3_Tempo= [162, 177],
+    Zone_4_Threshold= [178, 193],
+    Zone_5_Anaerobic= [194, np.inf]
+    )
+
 folderPath = Utils.getDataPath() + "\\WatchOffloadClean"
-gdi = WatchOffloadDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False) ) # To import from a watch offload
+gdi = WatchOffloadDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False, customHRzones=StravaHRzones) ) # To import from a watch offload
 # gdi = GarminDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False) ) # To import from a Garmin data folder
 
 # Evolution of best pace vs time of effort
@@ -47,6 +58,14 @@ actp.bestEffortPerTimeEvolutionPlot(gdi)
 
 # Same graph but distance rather than time
 actp.bestEffortPerDistanceEvolutionPlot(gdi)
+
+
+# -------------------------------------------------------------------------------------------------------
+#%% SHOW DISTRIBUTION OF TIME SPENT IN EACH HR ZONE EACH MONTH
+# Obtain metrics from Data Importer
+metricsDF = gdi.activityMetricsDF
+# Then create the plot
+actp.plotDistributionHRzones(metricsDF, StravaHRzones, "HR_Custom_Time_")
 
 # -------------------------------------------------------------------------------------------------------
 #%% More graphs and analyses incoming

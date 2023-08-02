@@ -54,3 +54,14 @@ fig = px.density_contour(
     )
 fig.update_traces(contours_coloring='fill', colorscale='jet')
 fig.show()
+
+#%% Obtain metrics for HR bar chart
+metricsDF = gdi.activityMetricsDF
+
+# Graphing libraries
+import plotly.graph_objects as go
+import plotly.io as pio
+#pio.renderers.default = 'svg'
+pio.renderers.default= 'browser' # Set to render plots in a browser
+
+actp.plotDistributionHRzones(metricsDF, StravaHRzones, "HR_Custom_Time_")
