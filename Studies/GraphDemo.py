@@ -66,7 +66,12 @@ gdi = WatchOffloadDataImporter(folderPath, importActivities=True,
                                                customHRzones=StravaHRzones,
                                                customPaceZones=StravaPaceZones
                                                ) ) # To import from a watch offload
-# gdi = GarminDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False) ) # To import from a Garmin data folder
+# gdi = GarminDataImporter(folderPath, importActivities=True,
+#                                      activityImporterOptions=dict(
+#                                         importWeather=False,
+#                                         customHRzones=StravaHRzones,
+#                                         customPaceZones=StravaPaceZones
+#                                         ) ) # To import from a Garmin data folder
 
 # Evolution of best pace vs time of effort
 actp.bestEffortPerTimeEvolutionPlot(gdi)
