@@ -27,7 +27,7 @@ class ActivityImporter:
     It also contains functions to create advanced metrics.
     """
     
-    def __init__(self, filePath, estimateBestEfforts=True, importWeather=True, customHRzones=dict()):
+    def __init__(self, filePath, estimateBestEfforts=True, importWeather=True, customHRzones=dict(), resampleDataTo1s=True):
         """
         Contructor. Give path to the .fit file as input
         """
@@ -37,6 +37,9 @@ class ActivityImporter:
         
         # Store custom HR zones
         self.customHRzones = customHRzones
+        
+        # Store whether we resample the data to 1s
+        self.resampleDataTo1s = resampleDataTo1s
         
         # Creates a stream and decoder object from the Garmin SDK to import data
         stream = Stream.from_file(filePath)
@@ -108,6 +111,19 @@ class ActivityImporter:
         # Drops 136 because it is exactly the heart rate
         # Drops 135 because no clue what it actually is
         df = Utils.removeNumberColumsFromDataFrame(df)
+        
+        # Resample data to 1s period if requested
+        if self.resampleDataTo1s:
+            # Create the new time array with 1s intervals
+            dfInterp = df.set_index('timestamp').resample('1S').interpolate(method='linear').reset_index()
+            # Deal with columns that must remain integers to make sense
+            dfInterp['heart_rate'] = dfInterp['heart_rate'].round(0)
+            # Steps Per Minutes
+            cadence_spm = Utils.convertRPMtoCadence(dfInterp['cadence'], dfInterp['fractional_cadence']).round(0)
+            dfInterp['cadence'] = cadence_spm.floordiv(2.0)
+            dfInterp['fractional_cadence'] = cadence_spm.mod(2) / 2.0
+            # Finally replace the original DataFrame
+            df = dfInterp.copy()
         
         # Get Cadence in Steps Per Minute
         # https://forums.garmin.com/developer/fit-sdk/f/discussion/288454/fractional-cadence-values

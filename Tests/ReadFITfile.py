@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 
 ###############################################################################
 #%% Test class
-filePath = Utils.getDataPath() + "\\11329404102_ACTIVITY.fit"
+# filePath = Utils.getDataPath() + "\\11329404102_ACTIVITY.fit"
+filePath = Utils.getDataPath() + "\\WatchOffloadClean\\2022_05_15-08_34_04_running.fit"
 print(filePath)
 
 StravaHRzones = dict(
@@ -51,5 +52,9 @@ plt.gca().invert_yaxis()
 plt.grid()
 plt.show()
 
-#%% Test HR zones Reprocessing
-timeInHRzones = actImp.processTimeinHRzones(StravaHRzones)
+#%% Test zones with and without resampling
+actImp_Resampled = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones, resampleDataTo1s=True)
+actImp_Original  = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones, resampleDataTo1s=False)
+timeInHRzones_Resampled = actImp_Resampled.timeInCustomHRzones
+timeInHRzones_Original = actImp_Original.timeInCustomHRzones
+
