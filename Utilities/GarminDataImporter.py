@@ -49,12 +49,7 @@ class StandardDataImporter:
         NONrunningFiles = []
         NFitFiles = len(listActFitFiles)
         for i, ActFitFile in tqdm(enumerate(listActFitFiles), desc="fit files import", total=NFitFiles):
-            thisImporter = ActivityImporter(ActFitFile, estimateBestEfforts=activityImporterOptions.get('estimateBestEfforts', True),
-                                            importWeather=activityImporterOptions.get('importWeather', False),
-                                            customHRzones=activityImporterOptions.get('customHRzones', dict()),
-                                            customPaceZones=activityImporterOptions.get('customPaceZones', dict()),
-                                            resampleDataTo1s=activityImporterOptions.get('resampleDataTo1s', True)
-                                            )
+            thisImporter = ActivityImporter(ActFitFile, **activityImporterOptions) # ** unpacks the dict activityImporterOptions into a list of keyword arguments
             # Check the validity of the imported fit file
             if thisImporter.ObjInfo['DecodeSuccess'] and thisImporter.ObjInfo['isSportActivity']:
                 # This is valid activity, we keep all valid files but import only running activities
