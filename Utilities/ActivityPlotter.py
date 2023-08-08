@@ -355,3 +355,56 @@ class ActivityPlotter:
         fig.update_layout(title= "Distribution of time spent in each Heart Rate zone", font_size=20, barmode='stack', xaxis_tickangle=-45)
         fig.update_xaxes(title_text= "Month Year")
         fig.show()
+        
+    @staticmethod
+    def plotDistributionPaceZones(metricsDF, PaceZonesDict, prefixInMetric):
+        """
+        Plots a distribution of the time spent in each Pace zone for each month.
+        It takes as argument the DataFrame of metrics, the dictionary defining
+        the Pace zones, as well as their prefix in the metrics column names.
+        """
+        
+        # Create list of column names for HR zones
+        PaceZoneNames = list(PaceZonesDict.keys())
+        PaceColumnNames = [prefixInMetric + zoneName for zoneName in PaceZoneNames]
+        # Get total per zone for each year-month
+        sumTimePerMonth = metricsDF.groupby(metricsDF['Metric_StartTime'].dt.strftime("%Y-%m"))[PaceColumnNames].sum()
+        # Create Sum of time in each zone to get ratios
+        sumTimePerMonth['Total'] = sumTimePerMonth[PaceColumnNames].sum(axis=1)
+        
+        # The create the trace for each zone
+        tracesList = []
+        for idx, thisCol in enumerate(PaceColumnNames):
+            thisPaceZoneName = PaceZoneNames[idx]
+            thisLegendName = thisPaceZoneName.replace('_', ' ') + ": " + \
+                                PaceZonesDict[thisPaceZoneName][0].strftime("%M:%S") + "/km to " + PaceZonesDict[thisPaceZoneName][1].strftime("%M:%S") + "/km"
+            tracesList.append(
+                    go.Bar(
+                        x= sumTimePerMonth.index,
+                        y= sumTimePerMonth[thisCol] / sumTimePerMonth['Total']*100.0,
+                        name= thisLegendName,
+                        legendgroup= PaceColumnNames[idx],
+                        showlegend= True,
+                        yaxis= "y"
+                        )
+                )
+        # Create the Layout
+        layout = go.Layout(
+            legend=dict(
+                orientation="h",
+                yanchor= "bottom",
+                y= 1.02,
+                xanchor= "right",
+                x= 1,
+                font_size= 11
+            ),
+            yaxis=dict(
+                domain=[0.00, 1.00],
+                title= "Percent of Time Spent in each Zone (%)"
+            )
+        )
+        # Finally create the figure
+        fig = go.Figure(data= tracesList, layout= layout)
+        fig.update_layout(title= "Distribution of time spent in each Pace zone", font_size=20, barmode='stack', xaxis_tickangle=-45)
+        fig.update_xaxes(title_text= "Month Year")
+        fig.show()

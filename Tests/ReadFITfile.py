@@ -21,7 +21,16 @@ StravaHRzones = dict(
     Zone_5_Anaerobic= [194, np.inf]
     )
 
-actImp = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones)
+StravaPaceZones = dict(
+    Zone_1_Active_Recovery= [datetime.datetime(1970, 1, 1, 0, 6, 15), datetime.datetime(1970, 1, 1, 2, 0, 0)],
+    Zone_2_Endurance= [datetime.datetime(1970, 1, 1, 0, 5, 23), datetime.datetime(1970, 1, 1, 0, 6, 15)],
+    Zone_3_Tempo= [datetime.datetime(1970, 1, 1, 0, 4, 50), datetime.datetime(1970, 1, 1, 0, 5, 23)],
+    Zone_4_Threshold= [datetime.datetime(1970, 1, 1, 0, 4, 31), datetime.datetime(1970, 1, 1, 0, 4, 50)],
+    Zone_5_VO2max= [datetime.datetime(1970, 1, 1, 0, 4, 15), datetime.datetime(1970, 1, 1, 0, 4, 31)],
+    Zone_6_Anaerobic= [datetime.datetime(1970, 1, 1, 0, 0, 0), datetime.datetime(1970, 1, 1, 0, 4, 15)]
+    )
+
+actImp = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones, customPaceZones=StravaPaceZones)
 metrics = actImp.exportUsefulMetrics()
 
 # Plot the pace graph to check
@@ -53,8 +62,9 @@ plt.grid()
 plt.show()
 
 #%% Test zones with and without resampling
-actImp_Resampled = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones, resampleDataTo1s=True)
-actImp_Original  = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones, resampleDataTo1s=False)
+actImp_Resampled = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones, resampleDataTo1s=True, customPaceZones=StravaPaceZones)
+actImp_Original  = ActivityImporter(filePath, importWeather=False, customHRzones=StravaHRzones, resampleDataTo1s=False, customPaceZones=StravaPaceZones)
 timeInHRzones_Resampled = actImp_Resampled.timeInCustomHRzones
 timeInHRzones_Original = actImp_Original.timeInCustomHRzones
-
+timeInPaceZones_Resampled = actImp_Resampled.timeInPaceZones
+timeInPaceZones_Original = actImp_Original.timeInPaceZones

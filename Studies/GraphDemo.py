@@ -16,6 +16,7 @@ from Utilities.ActivityImporter import ActivityImporter # To read a single activ
 from Utilities.ActivityPlotter import ActivityPlotter as actp # To create standard plots
 # Standard libraries
 import numpy as np
+import datetime
 
 # -------------------------------------------------------------------------------------------------------
 #%% COMPARE MULTIPLE SIMILAR ACTIVITIES
@@ -48,9 +49,23 @@ StravaHRzones = dict(
     Zone_4_Threshold= [178, 193],
     Zone_5_Anaerobic= [194, np.inf]
     )
+# Same for pace zones
+StravaPaceZones = dict(
+    Zone_1_Active_Recovery= [datetime.datetime(1970, 1, 1, 0, 6, 15), datetime.datetime(1970, 1, 1, 2, 0, 0)],
+    Zone_2_Endurance= [datetime.datetime(1970, 1, 1, 0, 5, 23), datetime.datetime(1970, 1, 1, 0, 6, 15)],
+    Zone_3_Tempo= [datetime.datetime(1970, 1, 1, 0, 4, 50), datetime.datetime(1970, 1, 1, 0, 5, 23)],
+    Zone_4_Threshold= [datetime.datetime(1970, 1, 1, 0, 4, 31), datetime.datetime(1970, 1, 1, 0, 4, 50)],
+    Zone_5_VO2max= [datetime.datetime(1970, 1, 1, 0, 4, 15), datetime.datetime(1970, 1, 1, 0, 4, 31)],
+    Zone_6_Anaerobic= [datetime.datetime(1970, 1, 1, 0, 0, 0), datetime.datetime(1970, 1, 1, 0, 4, 15)]
+    )
 
 folderPath = Utils.getDataPath() + "\\WatchOffloadClean"
-gdi = WatchOffloadDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False, customHRzones=StravaHRzones) ) # To import from a watch offload
+gdi = WatchOffloadDataImporter(folderPath, importActivities=True,
+                                           activityImporterOptions=dict(
+                                               importWeather=False,
+                                               customHRzones=StravaHRzones,
+                                               customPaceZones=StravaPaceZones
+                                               ) ) # To import from a watch offload
 # gdi = GarminDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False) ) # To import from a Garmin data folder
 
 # Evolution of best pace vs time of effort
@@ -82,6 +97,11 @@ GarminHRzones = dict(
     )
 
 actp.plotDistributionHRzones(metricsDF, GarminHRzones, "HR_Time_")
+
+# -------------------------------------------------------------------------------------------------------
+#%% SHOW DISTRIBUTION OF TIME SPENT IN EACH PACE ZONE EACH MONTH
+# Then create the plot
+actp.plotDistributionPaceZones(metricsDF, StravaPaceZones, "PaceZone_Time_")
 
 # -------------------------------------------------------------------------------------------------------
 #%% More graphs and analyses incoming

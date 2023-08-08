@@ -27,7 +27,8 @@ class ActivityImporter:
     It also contains functions to create advanced metrics.
     """
     
-    def __init__(self, filePath, estimateBestEfforts=True, importWeather=True, customHRzones=dict(), resampleDataTo1s=True):
+    def __init__(self, filePath, estimateBestEfforts=True, importWeather=True, customHRzones=dict(),
+                       customPaceZones=dict(), resampleDataTo1s=True):
         """
         Contructor. Give path to the .fit file as input
         """
@@ -35,8 +36,9 @@ class ActivityImporter:
         # Declare Main variables so we know they exist
         self.ObjInfo = dict()
         
-        # Store custom HR zones
+        # Store custom HR and pace zones
         self.customHRzones = customHRzones
+        self.customPaceZones = customPaceZones
         
         # Store whether we resample the data to 1s
         self.resampleDataTo1s = resampleDataTo1s
@@ -87,11 +89,15 @@ class ActivityImporter:
                 else:
                     self.ObjInfo['hasWeather'] = False
                     
-                # Calculate time in custom HR zones
+                # Calculate time in custom HR and pace zones
                 if customHRzones:
                     self.processTimeinHRzones(customHRzones)
                 else:
                     self.timeInCustomHRzones = dict() # Empty dict if no custom zones
+                if customPaceZones:
+                    self.processTimeinPaceZones(customPaceZones)
+                else:
+                    self.timeInPaceZones = dict() # Empty dict if no custom zones
                     
         else:
             self.ObjInfo['isSportActivity'] = False
@@ -320,6 +326,10 @@ class ActivityImporter:
         if self.timeInCustomHRzones:
             for zoneName, zoneTime in self.timeInCustomHRzones.items():
                 metricsExport['HR_Custom_Time_' + zoneName] = zoneTime
+        # Pace Zones
+        if self.timeInPaceZones:
+            for zoneName, zoneTime in self.timeInPaceZones.items():
+                metricsExport['PaceZone_Time_' + zoneName] = zoneTime
         # Laps metrics
         metricsExport['Laps_Distance'] = ','.join(str(x) for x in self.lapsMetricsDF['total_distance'])
         metricsExport['Laps_Time'] = ','.join(str(x) for x in self.lapsMetricsDF['total_timer_time'])
@@ -537,6 +547,27 @@ class ActivityImporter:
         # Store the results
         self.timeInCustomHRzones = timeInHRzones
         
+    def processTimeinPaceZones(self, PaceZones):
+        """
+        Function to re-process an activity with manually given Pace zones.
+        
+        PaceZones is a dictionnary containing the Pace zones. The key is the name
+        of that zone, the value is the interval of that zone.
+        This function returns a dictionnary with the same keys but the values
+        are the time spent in each zone in second.
+        """
+        
+        df = self.data
+        timeInPaceZones = dict()
+        for zoneName, zoneBnds in PaceZones.items():
+            yPace = df['pace'].copy()
+            idxFilter = (zoneBnds[0] <= yPace) & (yPace < zoneBnds[1])
+            yPace[idxFilter] = 1.0
+            yPace[~idxFilter] = 0.0            
+            timeInPaceZones[zoneName] = np.trapz(x=df['time'], y=yPace)            
+        
+        # Store the results
+        self.timeInPaceZones = timeInPaceZones
     
     #%% Data augmentation functions
     def importWeather(self):
