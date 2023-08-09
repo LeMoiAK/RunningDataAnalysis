@@ -15,6 +15,7 @@ from Utilities.ActivityImporter import ActivityImporter
 from Utilities.ActivityPlotter import ActivityPlotter as actp
 import Utilities.Functions as Utils
 import numpy as np
+import datetime
 
 folderPath = Utils.getDataPath() + "\\WatchOffloadClean"
 print(folderPath)
@@ -27,8 +28,23 @@ StravaHRzones = dict(
     Zone_4_Threshold= [178, 193],
     Zone_5_Anaerobic= [194, np.inf]
     )
+# Same for pace zones
+StravaPaceZones = dict(
+    Zone_1_Active_Recovery= [datetime.datetime(1970, 1, 1, 0, 6, 15), datetime.datetime(1970, 1, 1, 2, 0, 0)],
+    Zone_2_Endurance= [datetime.datetime(1970, 1, 1, 0, 5, 23), datetime.datetime(1970, 1, 1, 0, 6, 15)],
+    Zone_3_Tempo= [datetime.datetime(1970, 1, 1, 0, 4, 50), datetime.datetime(1970, 1, 1, 0, 5, 23)],
+    Zone_4_Threshold= [datetime.datetime(1970, 1, 1, 0, 4, 31), datetime.datetime(1970, 1, 1, 0, 4, 50)],
+    Zone_5_VO2max= [datetime.datetime(1970, 1, 1, 0, 4, 15), datetime.datetime(1970, 1, 1, 0, 4, 31)],
+    Zone_6_Anaerobic= [datetime.datetime(1970, 1, 1, 0, 0, 0), datetime.datetime(1970, 1, 1, 0, 4, 15)]
+    )
 
-gdi = WatchOffloadDataImporter(folderPath, importActivities=True, activityImporterOptions=dict(importWeather=False, customHRzones=StravaHRzones) )
+folderPath = Utils.getDataPath() + "\\WatchOffloadClean"
+gdi = WatchOffloadDataImporter(folderPath, importActivities=True,
+                                           activityImporterOptions=dict(
+                                               importWeather=False,
+                                               customHRzones=StravaHRzones,
+                                               customPaceZones=StravaPaceZones
+                                               ) ) # To import from a watch offload
 
 #%% Create Heat Map of training pace and Heart Rate
 # Get Total DataFrame
@@ -40,8 +56,8 @@ dfTotal = dfTotal[dfTotal['pace'] < np.datetime64('1970-01-01 00:08:00')]
 import plotly.express as px
 import pandas as pd
 
-#%%
-# Need to resolve the issue that some samples are longer times than others
+#%% Plot distribution of times in all runs and compares it to races
+
 # The Plotly express version has lots of issues with filled contours as soon
 # as some options like marginal_x or trendline are used
 fig = px.density_contour(
@@ -53,27 +69,34 @@ fig = px.density_contour(
     title= 'Heart Rate and Pace distribution during training'
     )
 fig.update_traces(contours_coloring='fill', colorscale='jet')
-fig.show()
 
-#%% Obtain metrics for HR bar chart
+# Get metrics to obtain best 5k, 10k, HM and M times and average HR
 metricsDF = gdi.activityMetricsDF
 
-# Graphing libraries
-import plotly.io as pio
-#pio.renderers.default = 'svg'
-pio.renderers.default= 'browser' # Set to render plots in a browser
+# Get index of best 5k, 10k, HM and M
+# Assigns better names for each distance
+dictDistances = {
+    "5km" : "5km",
+    "10km" : "10km",
+    "HalfMarathon" : "Half-Marathon",
+    "FullMarathon" : "Marathon"
+    }
 
-actp.plotDistributionHRzones(metricsDF, StravaHRzones, "HR_Custom_Time_")
-
-# Same but with Garmin zones
-GarminHRzones = dict(
-    Zone_0= [0, 99],
-    Zone_1= [100, 118],
-    Zone_2= [119, 138],
-    Zone_3= [139, 158],
-    Zone_4= [159, 178],
-    Zone_5= [179, 198],
-    Zone_6= [199, np.inf]
-    )
-
-actp.plotDistributionHRzones(metricsDF, GarminHRzones, "HR_Time_")
+for techName, readName in dictDistances.items():
+    thisIndex = metricsDF['BestEffort_distance_' + techName + '_time'].idxmin()
+    if not(np.isnan(thisIndex)):
+        # If a best time is found
+        fig.add_scatter(x= [int(metricsDF['BestEffort_distance_' + techName + '_avgHR'].iloc[thisIndex])],
+                        y= [metricsDF['BestEffort_distance_' + techName + '_pace'].iloc[thisIndex]],
+                        name= readName,
+                        marker=dict(
+                            color='Red',
+                            size=20,
+                            line=dict(
+                                color='DarkSlateGrey',
+                                width=2
+                                )
+                            )
+                        )
+        
+fig.show()

@@ -384,6 +384,7 @@ class ActivityImporter:
         # Get nice names for the channels to look at
         distanceArray = df['distance'].values
         timeArray = df['time'].values
+        heartRateArray = df['heart_rate'].values
         # Get total time and distance to filter out efforts we can't estimate
         distanceTotal = distanceArray[-1] - distanceArray[0]
         timeTotal = timeArray[-1] - timeArray[0]
@@ -495,19 +496,35 @@ class ActivityImporter:
                 bestEffortsMetrics['distance_' + thisDistName + '_time'] = bestTimePerDistance[iDist]
                 bestEffortsMetrics['distance_' + thisDistName + '_timeStamp'] = pd.Timestamp(bestTimePerDistance[iDist], unit='s')
                 bestEffortsMetrics['distance_' + thisDistName + '_pace'] = Utils.speedToPace(thisDistValue / bestTimePerDistance[iDist])
+                # Heart Rate
+                idxStart = int(bestEffortDistanceIndex[iDist, 0])
+                idxEnd = int(bestEffortDistanceIndex[iDist, 1])
+                bestEffortsMetrics['distance_' + thisDistName + '_avgHR'] = np.trapz(x=timeArray[idxStart:idxEnd], y=heartRateArray[idxStart:idxEnd]) / (timeArray[idxEnd] - timeArray[idxStart])
+                bestEffortsMetrics['distance_' + thisDistName + '_maxHR'] = heartRateArray[idxStart:idxEnd].max()
             else:
                 bestEffortsMetrics['distance_' + thisDistName + '_time'] = np.nan
                 bestEffortsMetrics['distance_' + thisDistName + '_timeStamp'] = np.nan
                 bestEffortsMetrics['distance_' + thisDistName + '_pace'] = np.nan
+                # Heart Rate
+                bestEffortsMetrics['distance_' + thisDistName + '_avgHR'] = np.nan
+                bestEffortsMetrics['distance_' + thisDistName + '_maxHR'] = np.nan
         # Times
         for iTime, thisTimeName in enumerate(timesNamesList):
             thisTimeValue = timesValuesList[iTime]
             if not(bestDistancePerTime[iTime] == 0.0):
                 bestEffortsMetrics['time_' + thisTimeName + '_distance'] = bestDistancePerTime[iTime]
                 bestEffortsMetrics['time_' + thisTimeName + '_pace'] = Utils.speedToPace(bestDistancePerTime[iTime] / thisTimeValue)
+                # Heart Rate
+                idxStart = int(bestEffortTimeIndex[iTime, 0])
+                idxEnd = int(bestEffortTimeIndex[iTime, 1])
+                bestEffortsMetrics['time_' + thisDistName + '_avgHR'] = np.trapz(x=timeArray[idxStart:idxEnd], y=heartRateArray[idxStart:idxEnd]) / (timeArray[idxEnd] - timeArray[idxStart])
+                bestEffortsMetrics['time_' + thisDistName + '_maxHR'] = heartRateArray[idxStart:idxEnd].max()
             else:
                 bestEffortsMetrics['time_' + thisTimeName + '_distance'] = np.nan
                 bestEffortsMetrics['time_' + thisTimeName + '_pace'] = np.nan
+                # Heart Rate
+                bestEffortsMetrics['time_' + thisDistName + '_avgHR'] = np.nan
+                bestEffortsMetrics['time_' + thisDistName + '_maxHR'] = np.nan
 
         # Finally save metrics to class
         self.bestEffortsMetrics = bestEffortsMetrics
