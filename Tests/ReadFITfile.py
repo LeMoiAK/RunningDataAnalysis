@@ -6,11 +6,12 @@ import pandas as pd
 import seaborn as sns
 import datetime
 import matplotlib.pyplot as plt
+from Utilities.ActivityPlotter import ActivityPlotter as actp # To create standard plots
 
 ###############################################################################
 #%% Test class
 # filePath = Utils.getDataPath() + "\\11329404102_ACTIVITY.fit"
-filePath = Utils.getDataPath() + "\\WatchOffloadClean\\2022_05_15-08_34_04_running.fit"
+filePath = Utils.getDataPath() + "\\WatchOffloadClean\\2023_10_15-08_39_48_running.fit"
 print(filePath)
 
 StravaHRzones = dict(
@@ -44,7 +45,11 @@ yDescent = np.sum(yAltDiff[yAltDiff < 0.0])
 # Altitude is wrong, there is some level of correction happening when the run is processed by Garmin
 
 #%% Check the Best Effort subset
-df5km = actImp.extractBestEffortTimeSeries('12mins')
+df5km = actImp.extractBestEffortTimeSeries('5km')
+df5kmPacing = ActivityImporter.createDFgivenPace(np.array([5.0e3]), np.array([np.datetime64('1970-01-01 00:04:30')]) )
+
+# Now plots the comparison plot
+actp.effortComparePlot([df5km, df5kmPacing], ['Random 5k', '04:30 pace 5k'], graphTitle="Comparison of 5km pacing")
 
 #%% Create Graph of best pace vs time
 x = np.array(actImp.bestEffortData['Time_Times'])

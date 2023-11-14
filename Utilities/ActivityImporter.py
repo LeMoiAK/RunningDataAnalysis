@@ -715,4 +715,64 @@ class ActivityImporter:
             
         return (isActivity, thisSport, startTime)
                 
+    @staticmethod
+    def createDFgivenPace(distanceArray, paceArray):
+        """
+        Function to create a DataFrame corresponding to a given list of distances
+        and their respective paces. This DataFrame can then be used to compare
+        with actual races to compare pacing strategy with actual pacing.
         
+        distanceArray is a np array of distances. paceArray is a np array of the
+        same length that contains the pace for each of these distances.
+        For instance a race with constant pace will contain only one element in
+        each list. But it is possible to vary the pace with as many elements as
+        desired.
+        """
+        
+        # We mostly want the speed, heart_rate, speed_kph, time, distanceEffort and timeEffort fields
+        # Convert the pace array to a speed array then get length of each section
+        # This length must be increased to the next second so we get full seconds
+        # that is the sampling frequency of the watches.
+        speedArray = Utils.paceToSpeed(paceArray)
+        timeArray = distanceArray / speedArray
+        timeArrayInt = np.ceil(timeArray)
+        Nsections = len(distanceArray)
+        
+        # Create arrays of time, speed, and distance
+        startingTime = 0.0
+        startingDistance = 0.0
+        totalTimeArray = np.array([]) # This empty pre-allocation is bad practice
+        totalSpeedArray = np.array([])
+        totalDistanceArray = np.array([])
+        totalPaceArray = np.array([], dtype='datetime64')
+        for iSection in np.arange(Nsections):
+            # Creates the arrays in the referential of the section alone
+            # The time must be dealt depending on whether this is the first section or not
+            # If first section, we include 0s for 0m.
+            # Else we start at 1s that has been traveled at speed.
+            if iSection == 0:
+                thisTimeArray = np.arange(0, timeArrayInt[iSection]+1)
+            else:
+                thisTimeArray = np.arange(1, timeArrayInt[iSection]+1)
+            thisSpeedArray = np.ones(thisTimeArray.size) * speedArray[iSection]
+            thisPaceArray = np.repeat(paceArray[iSection], thisTimeArray.size)
+            thisDistanceArray = thisTimeArray * speedArray[iSection]
+            
+            # Then convert them to global referential and assemble them
+            totalTimeArray = np.concatenate((totalTimeArray, thisTimeArray + startingTime))
+            totalSpeedArray = np.concatenate((totalSpeedArray, thisSpeedArray))
+            totalDistanceArray = np.concatenate((totalDistanceArray, thisDistanceArray + startingDistance))
+            totalPaceArray = np.concatenate((totalPaceArray, thisPaceArray))
+            
+            # Update starting time and distance
+            startingTime = thisTimeArray[-1]
+            startingDistance = thisDistanceArray[-1]
+            
+        # Creates the dataFrame
+        pacingDF = pd.DataFrame(data={'speed': totalSpeedArray, 'heart_rate': totalSpeedArray*np.nan,
+                                      'speed_kph': totalSpeedArray*3.6, 'pace': totalPaceArray,
+                                      'time': totalTimeArray, 'distanceEffort': totalDistanceArray,
+                                      'timeEffort': totalTimeArray
+                                      })
+        
+        return pacingDF        

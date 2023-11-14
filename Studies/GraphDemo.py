@@ -29,12 +29,17 @@ namesList = ["Training 01/04/2023",
              "Parkrun 10/06/2023"
              ]
 # Import the data
-activityList = [ActivityImporter(thisPath) for thisPath in filePathList] # Get Activities
+activityList = [ActivityImporter(thisPath, importWeather=False) for thisPath in filePathList] # Get Activities
 metrics = [thisAct.exportUsefulMetrics() for thisAct in activityList] # Get Metrics
 df5kmList = [thisAct.extractBestEffortTimeSeries('5km') for thisAct in activityList] # Get 5k dataFrames
 
+# Add a dataFrame corresponding to a 04:30 pace
+df5kmPacing = ActivityImporter.createDFgivenPace(np.array([5.0e3]), np.array([np.datetime64('1970-01-01 00:04:30')]) )
+df5kmList.append(df5kmPacing)
+namesList.append("04:30 pace")
+
 # Now plots the comparison plot
-actp.effortComparePlot(df5kmList, namesList, graphTitle="Comparison of two best 5km PB")
+actp.effortComparePlot(df5kmList, namesList, graphTitle="Comparison of two best 5km PB with 04:30 pace")
 
 # -------------------------------------------------------------------------------------------------------
 #%% SHOW EVOLUTION OF BEST PACE VS TIME AND DISTANCE

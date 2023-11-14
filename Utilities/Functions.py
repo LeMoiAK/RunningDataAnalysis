@@ -104,6 +104,18 @@ def speedToPace(speedMS):
     else:
         return pd.to_datetime(1000/np.maximum(speedMS, 1/3.6), unit='s')
 
+def paceToSpeed(paceMinSec):
+    """
+    Transforms a pace in datetime format to a speed in m/s
+    Pace input can be a Pandas Series so we can use apply
+    """
+    # Check for Type because we need different formulas for series and single numbers
+    if isinstance(paceMinSec, pd.Series):
+        return paceMinSec.apply(lambda pace: 1000/((pace-np.datetime64('1970-01-01 00:00:00'))/np.timedelta64(1,'s')) )
+    else:
+        return 1000/((paceMinSec-np.datetime64('1970-01-01 00:00:00'))/np.timedelta64(1,'s'))
+    
+
 def convertRPMtoCadence(cadence_RPM, fractional_cadence):
     """
     Converts a cadence in RPM and fractional cadence to a cadence in steps per minute. See
